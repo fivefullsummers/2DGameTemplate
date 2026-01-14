@@ -31,16 +31,19 @@ const HeroGrid = () => {
         return { x: x + dx, y: y + dy};
       })
     } else {
-      const {currentKey} = getControlsDirection();
+      const {pressedKeys} = getControlsDirection();
       let dx = 0;
       let dy = 0;
 
-      if (currentKey === 'UP') dy -= TILE_SIZE;
-      if (currentKey === 'DOWN') dy += TILE_SIZE;
-      if (currentKey === 'LEFT') dx -= TILE_SIZE;
-      if (currentKey === 'RIGHT') dx += TILE_SIZE;
-      // console.log(pressedKeys);
+      // Check for vertical movement
+      if (pressedKeys.includes('UP')) dy -= TILE_SIZE;
+      if (pressedKeys.includes('DOWN')) dy += TILE_SIZE;
+      
+      // Check for horizontal movement
+      if (pressedKeys.includes('LEFT')) dx -= TILE_SIZE;
+      if (pressedKeys.includes('RIGHT')) dx += TILE_SIZE;
 
+      // If any movement detected, set target (supports diagonal: both dx and dy non-zero)
       if (dx !== 0 || dy !== 0) {
         setTarget((prev) => ({ x: prev.x + dx, y: prev.y + dy}));
         setIsMoving(true);

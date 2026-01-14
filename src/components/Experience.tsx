@@ -3,7 +3,8 @@ import levelAsset from "../assets/map.png";
 import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE } from "../consts/game-world";
 import useDimensions from "../hooks/useDimensions";
 
-import HeroMouse from "./HeroMouse";
+// import HeroMouse from "./HeroMouse";
+import HeroAnimated from "./HeroAnimated";
 import { PointerEvent, useRef } from "react";
 import { IPosition } from "../types/common";
 
@@ -26,7 +27,9 @@ const Experience = () => {
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
         />
-        <HeroMouse onClickMove={onClickMove} />
+        {/* <HeroMouse onClickMove={onClickMove} /> */}
+        <HeroAnimated />
+
       </Container>
     </Stage>
   );

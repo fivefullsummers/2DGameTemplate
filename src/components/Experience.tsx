@@ -1,10 +1,11 @@
-import { Container, Sprite, Stage } from "@pixi/react";
-import levelAsset from "../assets/map.png";
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, OFFSET_X, OFFSET_Y } from "../consts/game-world";
+import { Container, Stage } from "@pixi/react";
+import { TILE_SIZE } from "../consts/game-world";
 import useDimensions from "../hooks/useDimensions";
 
 // import HeroMouse from "./HeroMouse";
 import HeroAnimated from "./HeroAnimated";
+import Level from "./Level";
+import CollisionDebug from "./CollisionDebug";
 import { PointerEvent, useRef } from "react";
 import { IPosition } from "../types/common";
 
@@ -22,13 +23,8 @@ const Experience = () => {
   return (
     <Stage width={width} height={height} onPointerDown={handleStageClick}>
       <Container scale={scale}>
-        <Sprite
-          image={levelAsset}
-          width={GAME_WIDTH}
-          height={GAME_HEIGHT}
-          x={OFFSET_X}
-          y={OFFSET_Y}
-        />
+        <Level />
+        <CollisionDebug />
         {/* <HeroMouse onClickMove={onClickMove} /> */}
         <HeroAnimated />
 

@@ -7,6 +7,7 @@ import heroRunAsset from "../assets/run.png";
 import heroIdleAsset from "../assets/idle.png";
 import { TILE_SIZE } from "../consts/game-world";
 import { textureCache } from "../utils/textureCache";
+import { isBlocked } from "../consts/collision-map";
 
 // Sprite sheet configuration - LPC (Liberated Pixel Cup) format
 const FRAME_WIDTH = 64;  // LPC sprites are 64x64 pixels per frame
@@ -81,8 +82,15 @@ const HeroAnimated = () => {
 
   // Create texture for current frame
   const currentTexture = useMemo(() => {
-    // Get the actual frame number from the sequence
-    const actualFrame = currentSheet.frameSequence[currentFrame];
+    // Guard against out-of-bounds access during sheet transitions
+    const frameIndex = currentFrame % currentSheet.frameSequence.length;
+    const actualFrame = currentSheet.frameSequence[frameIndex];
+    
+    // Guard against undefined frame numbers
+    if (actualFrame === undefined) {
+      console.warn(`Frame ${frameIndex} not found in sequence:`, currentSheet.frameSequence);
+      return cachedTexture; // Return base texture as fallback
+    }
     
     // Calculate the position of the current frame in the sprite sheet
     const x = actualFrame * FRAME_WIDTH;
@@ -95,7 +103,7 @@ const HeroAnimated = () => {
     const texture = new PIXI.Texture(cachedTexture.baseTexture, rectangle);
     
     return texture;
-  }, [cachedTexture, currentFrame, currentRow, currentSheet]);
+  }, [cachedTexture, currentFrame, currentRow, currentSheet.frameSequence]);
 
   useTick((delta) => {
     const { pressedKeys } = getControlsDirection();
@@ -141,10 +149,11 @@ const HeroAnimated = () => {
           // Calculate relative position in old animation (0 to 1)
           const relativePosition = prevFrame / oldSheet.frameSequence.length;
           
-          // Apply to new animation
+          // Apply to new animation and clamp to valid range
           const newFrame = Math.floor(relativePosition * newSheet.frameSequence.length);
           
-          return newFrame;
+          // Ensure frame is within bounds (safety check)
+          return Math.min(newFrame, newSheet.frameSequence.length - 1);
         });
       }
 
@@ -173,7 +182,16 @@ const HeroAnimated = () => {
           setCurrentRow(dy > 0 ? ANIMATIONS.DOWN : ANIMATIONS.UP);
         }
 
-        return { x: x + dx * speedMultiplier, y: y + dy * speedMultiplier };
+        // Calculate new position
+        const newX = x + dx * speedMultiplier;
+        const newY = y + dy * speedMultiplier;
+
+        // Check collision - if blocked, don't move
+        if (isBlocked(newX, newY)) {
+          return prev;
+        }
+
+        return { x: newX, y: newY };
       } else {
         // Not moving - set idle animation based on last direction
         if (currentRow === ANIMATIONS.DOWN) setCurrentRow(ANIMATIONS.IDLE_DOWN);

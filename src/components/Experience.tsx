@@ -6,12 +6,14 @@ import useDimensions from "../hooks/useDimensions";
 import HeroAnimated from "./HeroAnimated";
 import Level from "./Level";
 import CollisionDebug from "./CollisionDebug";
+import BulletManager, { BulletManagerRef } from "./BulletManager";
 import { PointerEvent, useRef } from "react";
 import { IPosition } from "../types/common";
 
 const Experience = () => {
   const { width, height, scale } = useDimensions();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
+  const bulletManagerRef = useRef<BulletManagerRef>(null);
 
   const handleStageClick = (event: PointerEvent) => {
     onClickMove.current?.({
@@ -25,8 +27,9 @@ const Experience = () => {
       <Container scale={scale}>
         <Level />
         <CollisionDebug />
+        <BulletManager ref={bulletManagerRef} />
         {/* <HeroMouse onClickMove={onClickMove} /> */}
-        <HeroAnimated />
+        <HeroAnimated bulletManagerRef={bulletManagerRef} gunType="pistol" />
 
       </Container>
     </Stage>

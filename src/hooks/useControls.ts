@@ -10,11 +10,14 @@ const DIRECTION_KEYS: Record<string, Direction> = {
 
 // Additional modifier keys that aren't directions
 type ModifierKey = 'SHIFT'
-type PressedKey = Direction | ModifierKey
+type ActionKey = 'SHOOT'
+type PressedKey = Direction | ModifierKey | ActionKey
 
 export const useControls = () => {
   const [heldDirections, setHeldDirections] = useState<Direction[]>([])
   const [heldModifiers, setHeldModifiers] = useState<ModifierKey[]>([])
+  const [heldActions, setHeldActions] = useState<ActionKey[]>([])
+  const [shootPressed, setShootPressed] = useState(false) // Track shoot key press events
 
   const handleKey = useCallback((e: KeyboardEvent, isKeyDown: boolean) => {
     const direction = DIRECTION_KEYS[e.code]
@@ -38,6 +41,19 @@ export const useControls = () => {
         }
         return prev.filter((mod) => mod !== 'SHIFT')
       })
+      return
+    }
+
+    // Handle action keys (Space for shooting)
+    if (e.code === 'Space') {
+      if (isKeyDown) {
+        setShootPressed(true) // Signal a shoot event
+        setHeldActions((prev) => {
+          return prev.includes('SHOOT') ? prev : ['SHOOT', ...prev]
+        })
+      } else {
+        setHeldActions((prev) => prev.filter((action) => action !== 'SHOOT'))
+      }
     }
   }, [])
 
@@ -57,10 +73,24 @@ export const useControls = () => {
   const getControlsDirection = useCallback(
     (): { currentKey: Direction, pressedKeys: PressedKey[] } => ({ 
       currentKey: heldDirections[0], 
-      pressedKeys: [...heldDirections, ...heldModifiers] as PressedKey[]
+      pressedKeys: [...heldDirections, ...heldModifiers, ...heldActions] as PressedKey[]
     }),
-    [heldDirections, heldModifiers]
+    [heldDirections, heldModifiers, heldActions]
   )
 
-  return { getControlsDirection }
+  // Check if shoot was pressed and consume the event
+  const consumeShootPress = useCallback(() => {
+    if (shootPressed) {
+      setShootPressed(false)
+      return true
+    }
+    return false
+  }, [shootPressed])
+
+  // Check if shoot key is currently held
+  const isShootHeld = useCallback(() => {
+    return heldActions.includes('SHOOT')
+  }, [heldActions])
+
+  return { getControlsDirection, consumeShootPress, isShootHeld }
 }

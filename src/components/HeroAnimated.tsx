@@ -1,13 +1,16 @@
 import { Sprite, useTick } from "@pixi/react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useControls } from "../hooks/useControls";
 import * as PIXI from "pixi.js";
 import heroWalkAsset from "../assets/walk.png";
 import heroRunAsset from "../assets/run.png";
 import heroIdleAsset from "../assets/idle.png";
+import heroShootAsset from "../assets/shoot.png";
 import { TILE_SIZE } from "../consts/game-world";
 import { textureCache } from "../utils/textureCache";
 import { isBlocked } from "../consts/collision-map";
+import { BulletManagerRef } from "./BulletManager";
+import { GUN_TYPES, DEFAULT_GUN_TYPE } from "../consts/bullet-config";
 
 // Sprite sheet configuration - LPC (Liberated Pixel Cup) format
 const FRAME_WIDTH = 64;  // LPC sprites are 64x64 pixels per frame
@@ -45,6 +48,13 @@ const ANIMATION_SHEETS: Record<string, AnimationSheet> = {
     framesPerStep: 2,
     speed: 0.25, // Faster animation for running
   },
+  shoot: {
+    asset: heroShootAsset,
+    frameSequence: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // Shooting animation frames 0-12
+    idleFrame: null,       // No idle frame in shoot.png
+    framesPerStep: 13,     // Complete full animation (one-shot)
+    speed: 0.30,           // Fast shooting animation
+  },
 };
 
 // Limited LPC sprite sheet - only 4 rows (0-3)
@@ -60,8 +70,13 @@ const ANIMATIONS = {
   IDLE_RIGHT: 3,
 };
 
-const HeroAnimated = () => {
-  const { getControlsDirection } = useControls();
+interface HeroAnimatedProps {
+  bulletManagerRef?: React.RefObject<BulletManagerRef>;
+  gunType?: string;
+}
+
+const HeroAnimated = ({ bulletManagerRef, gunType = DEFAULT_GUN_TYPE }: HeroAnimatedProps) => {
+  const { getControlsDirection, consumeShootPress, isShootHeld } = useControls();
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [currentFrame, setCurrentFrame] = useState(0);
   const [currentRow, setCurrentRow] = useState(ANIMATIONS.IDLE_DOWN);
@@ -70,6 +85,11 @@ const HeroAnimated = () => {
   const [frameAccumulator, setFrameAccumulator] = useState(0); // Frame timing accumulator
   const [isWalking, setIsWalking] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false); // Track if animation cycle is in progress
+  const [isShooting, setIsShooting] = useState(false); // Track if shooting animation is playing
+  const lastShotTime = useRef(0); // Track last shot time for fire rate
+  
+  // Get current gun configuration
+  const currentGun = GUN_TYPES[gunType] || GUN_TYPES[DEFAULT_GUN_TYPE];
 
   // Get current animation sheet configuration
   const currentSheet = ANIMATION_SHEETS[currentSheetName];
@@ -108,6 +128,43 @@ const HeroAnimated = () => {
   useTick((delta) => {
     const { pressedKeys } = getControlsDirection();
 
+    // Handle shooting input
+    const canShoot = bulletManagerRef?.current && !isShooting;
+    const shootKeyPressed = consumeShootPress();
+    const shootKeyHeld = isShootHeld();
+    
+    // Check fire rate cooldown
+    const now = Date.now();
+    const canFireAgain = now - lastShotTime.current >= currentGun.fireRate;
+    
+    // Trigger shooting if conditions are met
+    if (canShoot && canFireAgain) {
+      // Single shot or automatic
+      const shouldShoot = shootKeyPressed || (currentGun.automatic && shootKeyHeld);
+      
+      if (shouldShoot) {
+        setIsShooting(true);
+        lastShotTime.current = now;
+        
+        // Spawn bullet in the direction hero is facing
+        const bulletOffsetX = position.x + TILE_SIZE / 2;
+        const bulletOffsetY = position.y + TILE_SIZE / 2;
+        
+        let shootDirection: "UP" | "DOWN" | "LEFT" | "RIGHT" = "DOWN";
+        if (currentRow === ANIMATIONS.UP || currentRow === ANIMATIONS.IDLE_UP) shootDirection = "UP";
+        else if (currentRow === ANIMATIONS.DOWN || currentRow === ANIMATIONS.IDLE_DOWN) shootDirection = "DOWN";
+        else if (currentRow === ANIMATIONS.LEFT || currentRow === ANIMATIONS.IDLE_LEFT) shootDirection = "LEFT";
+        else if (currentRow === ANIMATIONS.RIGHT || currentRow === ANIMATIONS.IDLE_RIGHT) shootDirection = "RIGHT";
+        
+        bulletManagerRef.current.spawnBullet(
+          bulletOffsetX,
+          bulletOffsetY,
+          shootDirection,
+          currentGun.bulletType
+        );
+      }
+    }
+
     // Handle movement
     setPosition((prev) => {
       const { x, y } = prev;
@@ -128,7 +185,9 @@ const HeroAnimated = () => {
 
       // Determine which animation sheet to use
       let targetSheetName: string;
-      if (!moving) {
+      if (isShooting) {
+        targetSheetName = "shoot";  // Playing shoot animation - override other animations
+      } else if (!moving) {
         targetSheetName = "idle";  // Not moving - use idle animation
       } else if (pressedKeys.includes("SHIFT")) {
         targetSheetName = "run";   // Moving + Shift - use run animation
@@ -204,8 +263,8 @@ const HeroAnimated = () => {
     });
 
     // Handle animation frame updates
-    // Keep animating if walking OR if animation cycle is in progress OR if idling
-    const shouldAnimate = isWalking || isAnimating || currentSheetName === "idle";
+    // Keep animating if walking OR if animation cycle is in progress OR if idling OR if shooting
+    const shouldAnimate = isWalking || isAnimating || currentSheetName === "idle" || isShooting;
     
     if (shouldAnimate) {
       setFrameAccumulator((prev) => {
@@ -221,8 +280,15 @@ const HeroAnimated = () => {
             // A step completes when we reach a frame divisible by framesPerStep
             const isStepComplete = nextFrame % currentSheet.framesPerStep === 0;
             
+            // Special handling for shoot animation - complete full animation then stop
+            if (currentSheetName === "shoot" && nextFrame === 0) {
+              setIsShooting(false);
+              setIsAnimating(false);
+              return 0; // Reset to first frame
+            }
+            
             // If step complete and not walking (but not idle), stop animating
-            if (isStepComplete && !isWalking && currentSheetName !== "idle") {
+            if (isStepComplete && !isWalking && currentSheetName !== "idle" && currentSheetName !== "shoot") {
               setIsAnimating(false);
               return 0; // Reset to first frame
             }

@@ -18,6 +18,7 @@ export const useControls = () => {
   const [heldModifiers, setHeldModifiers] = useState<ModifierKey[]>([])
   const [heldActions, setHeldActions] = useState<ActionKey[]>([])
   const [shootPressed, setShootPressed] = useState(false) // Track shoot key press events
+  const [mobileDirection, setMobileDirection] = useState<Direction | null>(null) // Track mobile joystick input
 
   const handleKey = useCallback((e: KeyboardEvent, isKeyDown: boolean) => {
     const direction = DIRECTION_KEYS[e.code]
@@ -71,12 +72,22 @@ export const useControls = () => {
   }, [handleKey])
 
   const getControlsDirection = useCallback(
-    (): { currentKey: Direction, pressedKeys: PressedKey[] } => ({ 
-      currentKey: heldDirections[0], 
-      pressedKeys: [...heldDirections, ...heldModifiers, ...heldActions] as PressedKey[]
-    }),
-    [heldDirections, heldModifiers, heldActions]
+    (): { currentKey: Direction, pressedKeys: PressedKey[] } => {
+      // Prioritize mobile direction if set, otherwise use keyboard
+      const currentKey = mobileDirection || heldDirections[0];
+      const directions = mobileDirection ? [mobileDirection] : heldDirections;
+      return {
+        currentKey,
+        pressedKeys: [...directions, ...heldModifiers, ...heldActions] as PressedKey[]
+      };
+    },
+    [heldDirections, heldModifiers, heldActions, mobileDirection]
   )
+
+  // Method to set direction from mobile joystick
+  const setJoystickDirection = useCallback((direction: Direction | null) => {
+    setMobileDirection(direction);
+  }, [])
 
   // Check if shoot was pressed and consume the event
   const consumeShootPress = useCallback(() => {
@@ -92,5 +103,5 @@ export const useControls = () => {
     return heldActions.includes('SHOOT')
   }, [heldActions])
 
-  return { getControlsDirection, consumeShootPress, isShootHeld }
+  return { getControlsDirection, consumeShootPress, isShootHeld, setJoystickDirection }
 }

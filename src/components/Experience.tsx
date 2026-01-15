@@ -9,11 +9,15 @@ import CollisionDebug from "./CollisionDebug";
 import BulletManager, { BulletManagerRef } from "./BulletManager";
 import { PointerEvent, useRef } from "react";
 import { IPosition } from "../types/common";
+import { ControlsProvider } from "../contexts/ControlsContext";
+import MobileJoystick from "./MobileJoystick";
+import { useControlsContext } from "../contexts/ControlsContext";
 
-const Experience = () => {
+const ExperienceContent = () => {
   const { width, height, scale } = useDimensions();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
   const bulletManagerRef = useRef<BulletManagerRef>(null);
+  const { setJoystickDirection, getControlsDirection, consumeShootPress, isShootHeld } = useControlsContext();
 
   const handleStageClick = (event: PointerEvent) => {
     onClickMove.current?.({
@@ -23,16 +27,32 @@ const Experience = () => {
   }
 
   return (
-    <Stage width={width} height={height} onPointerDown={handleStageClick}>
-      <Container scale={scale}>
-        <Level />
-        <CollisionDebug />
-        <BulletManager ref={bulletManagerRef} />
-        {/* <HeroMouse onClickMove={onClickMove} /> */}
-        <HeroAnimated bulletManagerRef={bulletManagerRef} gunType="pistol" />
+    <>
+      <Stage width={width} height={height} onPointerDown={handleStageClick}>
+        <Container scale={scale}>
+          <Level />
+          <CollisionDebug />
+          <BulletManager ref={bulletManagerRef} />
+          {/* <HeroMouse onClickMove={onClickMove} /> */}
+          <HeroAnimated 
+            bulletManagerRef={bulletManagerRef} 
+            gunType="pistol"
+            getControlsDirection={getControlsDirection}
+            consumeShootPress={consumeShootPress}
+            isShootHeld={isShootHeld}
+          />
+        </Container>
+      </Stage>
+      <MobileJoystick onDirectionChange={setJoystickDirection} />
+    </>
+  );
+};
 
-      </Container>
-    </Stage>
+const Experience = () => {
+  return (
+    <ControlsProvider>
+      <ExperienceContent />
+    </ControlsProvider>
   );
 };
 

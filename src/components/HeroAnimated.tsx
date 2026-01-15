@@ -1,6 +1,5 @@
 import { Sprite, useTick } from "@pixi/react";
 import { useState, useMemo, useRef } from "react";
-import { useControls } from "../hooks/useControls";
 import * as PIXI from "pixi.js";
 import heroWalkAsset from "../assets/walk.png";
 import heroRunAsset from "../assets/run.png";
@@ -11,6 +10,7 @@ import { textureCache } from "../utils/textureCache";
 import { isBlocked } from "../consts/collision-map";
 import { BulletManagerRef } from "./BulletManager";
 import { GUN_TYPES, DEFAULT_GUN_TYPE } from "../consts/bullet-config";
+import { Direction } from "../types/common";
 
 // Sprite sheet configuration - LPC (Liberated Pixel Cup) format
 const FRAME_WIDTH = 64;  // LPC sprites are 64x64 pixels per frame
@@ -70,13 +70,23 @@ const ANIMATIONS = {
   IDLE_RIGHT: 3,
 };
 
+type PressedKey = Direction | 'SHIFT' | 'SHOOT';
+
 interface HeroAnimatedProps {
   bulletManagerRef?: React.RefObject<BulletManagerRef>;
   gunType?: string;
+  getControlsDirection: () => { currentKey: Direction, pressedKeys: PressedKey[] };
+  consumeShootPress: () => boolean;
+  isShootHeld: () => boolean;
 }
 
-const HeroAnimated = ({ bulletManagerRef, gunType = DEFAULT_GUN_TYPE }: HeroAnimatedProps) => {
-  const { getControlsDirection, consumeShootPress, isShootHeld } = useControls();
+const HeroAnimated = ({ 
+  bulletManagerRef, 
+  gunType = DEFAULT_GUN_TYPE,
+  getControlsDirection,
+  consumeShootPress,
+  isShootHeld
+}: HeroAnimatedProps) => {
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [currentFrame, setCurrentFrame] = useState(0);
   const [currentRow, setCurrentRow] = useState(ANIMATIONS.IDLE_DOWN);

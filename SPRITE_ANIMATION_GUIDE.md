@@ -24,12 +24,14 @@ The `HeroAnimated` component implements a production-ready sprite animation syst
 ✅ **LPC sprite support** - Configured for standard 64×64 LPC sprite sheets  
 
 **Current Configuration:**
+- Idle sheet: 192×256 pixels (3 frames × 4 rows) - subtle breathing animation
 - Walk sheet: 832×256 pixels (13 frames × 4 rows, frames 1-8 for walking, frame 0 for idle)
 - Run sheet: 512×256 pixels (8 frames × 4 rows)
 - Frame size: 64×64 pixels (scaled to 0.5 for 32px tiles)
+- Idle animation: 3 frames per direction (frame sequence: [0,0,1]) - plays when no input
 - Walk animation: 8 frames per direction (frame sequence: [1,2,3,4,5,6,7,8])
 - Run animation: 8 frames per direction (frame sequence: [0,1,2,3,4,5,6,7])
-- Shift key toggles between walk and run when moving
+- Controls: No input = idle, Arrow keys = walk, Shift + Arrows = run
 
 ## Multi-Sheet Animation System
 
@@ -55,6 +57,13 @@ interface AnimationSheet {
 
 ```typescript
 const ANIMATION_SHEETS: Record<string, AnimationSheet> = {
+  idle: {
+    asset: heroIdleAsset,              // idle.png
+    frameSequence: [0, 0, 1],          // Subtle breathing: hold frame 0, then frame 1
+    idleFrame: 0,                      // Frame 0 is default idle pose
+    framesPerStep: 1,                  // Complete quickly when transitioning
+    speed: 0.08,                       // Very slow, subtle animation
+  },
   walk: {
     asset: heroWalkAsset,              // walk.png
     frameSequence: [1, 2, 3, 4, 5, 6, 7, 8],  // Frames 1-8 for walking
@@ -92,25 +101,49 @@ frameSequence: [0, 1, 0, 2, 0, 3]  // Frame 0 between each frame
 frameSequence: [5, 4, 3, 2, 1]     // Reverse order
 ```
 
-### Idle Frame Management
+### Idle Animation System
 
-**Key Concept:** The idle frame (usually frame 0) shows the character standing still. Not all sprite sheets include an idle frame.
+**Key Concept:** The idle animation plays continuously when the character has no input, creating a subtle "breathing" or "living" effect.
+
+**Three-tier idle system:**
+
+1. **Idle Animation Sheet (idle.png)** - Primary idle state
+   - Dedicated animation sheet for standing still
+   - Plays continuously when no input is detected
+   - Typically 2-3 frames for subtle breathing effect
+   - Example: `frameSequence: [0, 0, 1]` creates gentle breathing
+
+2. **Idle Frame (frame 0 in walk.png)** - Fallback
+   - Static standing pose stored in walk animation
+   - Can be used as fallback if no dedicated idle sheet
+   - Used for instant transitions
+
+3. **No Idle (run.png)** - Action-only sheets
+   - Some sheets like run.png have no idle state
+   - System automatically switches to idle sheet when stopping
 
 **How it works:**
-- **walk.png** has frame 0 for idle, frames 1-8 for walking
-- **run.png** only has frames 0-7 for running (no separate idle frame)
-- When the character stops, the system automatically switches to the walk sheet to display frame 0
-
 ```typescript
-// Idle frame rendering logic
-if (!isWalking && !isAnimating) {
-  // Always use walk sheet for idle
-  textureToUse = textureCache.getTexture(ANIMATION_SHEETS.walk.asset);
-  actualFrame = ANIMATION_SHEETS.walk.idleFrame!;  // Frame 0
+// Determine which animation to play
+if (!moving) {
+  targetSheetName = "idle";  // No input → play idle animation
+} else if (pressedKeys.includes("SHIFT")) {
+  targetSheetName = "run";   // Moving + Shift → run
 } else {
-  // Use current animation sheet
-  actualFrame = currentSheet.frameSequence[currentFrame];
+  targetSheetName = "walk";  // Moving → walk
 }
+```
+
+**Animation flow:**
+- **At rest**: `idle` sheet loops continuously (subtle breathing)
+- **Start walking**: Transitions from `idle` → `walk`
+- **Start running**: Transitions from `walk` → `run` (or `idle` → `run`)
+- **Stop moving**: Completes current step, then → `idle`
+
+**Idle animation continues looping:**
+```typescript
+const shouldAnimate = isWalking || isAnimating || currentSheetName === "idle";
+// Idle animation never stops, always loops
 ```
 
 ### Smooth Animation Transitions
@@ -196,12 +229,15 @@ To add a new animation (e.g., jump):
 
 ### Best Practices
 
-1. **Idle frames should be in one sheet**: Keep idle frame in walk.png as the default standing pose
-2. **Match frame counts for smooth transitions**: Similar frame counts (8 walk, 8 run) make transitions smoother
-3. **Use consistent frame dimensions**: All sheets should have the same frame width/height (64×64)
-4. **Organize by action type**: walk.png, run.png, attack.png, jump.png
-5. **Keep speed relative to action**: Run faster than walk (0.25 vs 0.15)
-6. **Adjust framesPerStep**: Shorter values (2) for quick actions, longer (3-4) for walking
+1. **Use dedicated idle animation**: Create idle.png with subtle breathing effect (2-3 frames) for living character
+2. **Idle frame pattern**: Use repeated frames like `[0,0,1]` for natural breathing rhythm
+3. **Idle speed**: Keep very slow (0.05-0.10) for subtle, non-distracting effect
+4. **Match frame counts for smooth transitions**: Similar frame counts (8 walk, 8 run) make transitions smoother
+5. **Use consistent frame dimensions**: All sheets should have the same frame width/height (64×64)
+6. **Organize by action type**: idle.png, walk.png, run.png, attack.png, jump.png
+7. **Speed hierarchy**: Idle (0.08) < Walk (0.15) < Run (0.25) < Attack (0.30)
+8. **Adjust framesPerStep**: Shorter values (1-2) for quick actions, longer (3-4) for walking
+9. **Default to idle**: System should start in idle state for natural appearance
 
 ### Troubleshooting
 
@@ -209,9 +245,15 @@ To add a new animation (e.g., jump):
 - Check that `frameSequence` includes all desired frames
 - Verify frame numbers exist in the sprite sheet
 
-**Problem: Wrong frame shown when idle**
-- Ensure walk sheet has `idleFrame: 0`
-- Check that idle frame rendering logic uses walk sheet
+**Problem: Idle animation not playing**
+- Ensure idle sheet is imported: `import heroIdleAsset from "../assets/idle.png"`
+- Check that `currentSheetName` starts as `"idle"` in initial state
+- Verify idle animation is in `shouldAnimate` condition
+- Check that idle.png exists in assets folder
+
+**Problem: Idle animation too fast/slow**
+- Adjust `idle.speed` value (0.05-0.10 recommended)
+- Modify `frameSequence` to add more repeated frames: `[0,0,0,1]` is slower than `[0,1]`
 
 **Problem: Transition is jarring**
 - Ensure similar frame counts between animations

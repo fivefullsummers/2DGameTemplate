@@ -1,6 +1,6 @@
 import { Container, Sprite, Stage } from "@pixi/react";
 import levelAsset from "../assets/map.png";
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE } from "../consts/game-world";
+import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, OFFSET_X, OFFSET_Y } from "../consts/game-world";
 import useDimensions from "../hooks/useDimensions";
 
 // import HeroMouse from "./HeroMouse";
@@ -26,6 +26,8 @@ const Experience = () => {
           image={levelAsset}
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
+          x={OFFSET_X}
+          y={OFFSET_Y}
         />
         {/* <HeroMouse onClickMove={onClickMove} /> */}
         <HeroAnimated />

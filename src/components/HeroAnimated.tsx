@@ -4,6 +4,7 @@ import { useControls } from "../hooks/useControls";
 import * as PIXI from "pixi.js";
 import heroWalkAsset from "../assets/walk.png";
 import heroRunAsset from "../assets/run.png";
+import heroIdleAsset from "../assets/idle.png";
 import { TILE_SIZE } from "../consts/game-world";
 import { textureCache } from "../utils/textureCache";
 
@@ -22,6 +23,13 @@ interface AnimationSheet {
 }
 
 const ANIMATION_SHEETS: Record<string, AnimationSheet> = {
+  idle: {
+    asset: heroIdleAsset,
+    frameSequence: [0, 0, 1], // Idle breathing animation
+    idleFrame: 0,          // Frame 0 is default idle pose
+    framesPerStep: 1,      // Complete quickly when transitioning
+    speed: 0.08,           // Slow, subtle animation
+  },
   walk: {
     asset: heroWalkAsset,
     frameSequence: [1, 2, 3, 4, 5, 6, 7, 8], // Walking cycle frames 1-8
@@ -56,7 +64,7 @@ const HeroAnimated = () => {
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [currentFrame, setCurrentFrame] = useState(0);
   const [currentRow, setCurrentRow] = useState(ANIMATIONS.IDLE_DOWN);
-  const [currentSheetName, setCurrentSheetName] = useState<string>("walk");
+  const [currentSheetName, setCurrentSheetName] = useState<string>("idle");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [frameAccumulator, setFrameAccumulator] = useState(0); // Frame timing accumulator
   const [isWalking, setIsWalking] = useState(false);
@@ -73,19 +81,8 @@ const HeroAnimated = () => {
 
   // Create texture for current frame
   const currentTexture = useMemo(() => {
-    // Determine which texture and frame to use
-    let textureToUse = cachedTexture;
-    let actualFrame: number;
-    
-    // If not walking and not animating, show the idle frame from walk sheet
-    if (!isWalking && !isAnimating) {
-      // Always use walk sheet for idle, since run.png doesn't have an idle frame
-      textureToUse = textureCache.getTexture(ANIMATION_SHEETS.walk.asset);
-      actualFrame = ANIMATION_SHEETS.walk.idleFrame!; // Frame 0 from walk.png
-    } else {
-      // Use current sheet and get frame from sequence
-      actualFrame = currentSheet.frameSequence[currentFrame];
-    }
+    // Get the actual frame number from the sequence
+    const actualFrame = currentSheet.frameSequence[currentFrame];
     
     // Calculate the position of the current frame in the sprite sheet
     const x = actualFrame * FRAME_WIDTH;
@@ -94,11 +91,11 @@ const HeroAnimated = () => {
     // Create a rectangle that defines which part of the sprite sheet to show
     const rectangle = new PIXI.Rectangle(x, y, FRAME_WIDTH, FRAME_HEIGHT);
     
-    // Create a new texture from the base texture using the rectangle
-    const texture = new PIXI.Texture(textureToUse.baseTexture, rectangle);
+    // Create a new texture from the cached base texture using the rectangle
+    const texture = new PIXI.Texture(cachedTexture.baseTexture, rectangle);
     
     return texture;
-  }, [cachedTexture, currentFrame, currentRow, currentSheet, isWalking, isAnimating]);
+  }, [cachedTexture, currentFrame, currentRow, currentSheet]);
 
   useTick((delta) => {
     const { pressedKeys } = getControlsDirection();
@@ -121,9 +118,15 @@ const HeroAnimated = () => {
       const moving = magnitude > 0;
       setIsWalking(moving);
 
-      // Only run if BOTH moving AND shift is held
-      const isRunning = moving && pressedKeys.includes("SHIFT");
-      const targetSheetName = isRunning ? "run" : "walk";
+      // Determine which animation sheet to use
+      let targetSheetName: string;
+      if (!moving) {
+        targetSheetName = "idle";  // Not moving - use idle animation
+      } else if (pressedKeys.includes("SHIFT")) {
+        targetSheetName = "run";   // Moving + Shift - use run animation
+      } else {
+        targetSheetName = "walk";  // Moving - use walk animation
+      }
       
       // Switch animation sheet if needed, maintaining relative frame position
       if (targetSheetName !== currentSheetName) {
@@ -144,6 +147,8 @@ const HeroAnimated = () => {
           return newFrame;
         });
       }
+
+      const isRunning = targetSheetName === "run";
 
       // Set the appropriate animation row based on direction
       if (moving) {
@@ -181,8 +186,10 @@ const HeroAnimated = () => {
     });
 
     // Handle animation frame updates
-    // Keep animating if walking OR if animation cycle is in progress
-    if (isWalking || isAnimating) {
+    // Keep animating if walking OR if animation cycle is in progress OR if idling
+    const shouldAnimate = isWalking || isAnimating || currentSheetName === "idle";
+    
+    if (shouldAnimate) {
       setFrameAccumulator((prev) => {
         const newAccumulator = prev + currentSheet.speed * delta;
         
@@ -196,14 +203,10 @@ const HeroAnimated = () => {
             // A step completes when we reach a frame divisible by framesPerStep
             const isStepComplete = nextFrame % currentSheet.framesPerStep === 0;
             
-            // If step complete and not walking, stop animating
-            if (isStepComplete && !isWalking) {
+            // If step complete and not walking (but not idle), stop animating
+            if (isStepComplete && !isWalking && currentSheetName !== "idle") {
               setIsAnimating(false);
-              // Switch to walk sheet if currently on a sheet without idle frame
-              if (currentSheetName !== "walk") {
-                setCurrentSheetName("walk");
-              }
-              return 0; // Reset to idle frame
+              return 0; // Reset to first frame
             }
             
             return nextFrame;
@@ -214,13 +217,9 @@ const HeroAnimated = () => {
         return newAccumulator;
       });
     } else {
-      // Reset to first frame when completely idle
+      // Reset to first frame when switching sheets
       setCurrentFrame(0);
       setFrameAccumulator(0);
-      // Make sure we're on walk sheet for idle display
-      if (currentSheetName !== "walk") {
-        setCurrentSheetName("walk");
-      }
     }
   });
 

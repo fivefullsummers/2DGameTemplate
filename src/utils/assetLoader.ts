@@ -7,6 +7,9 @@ import idleAsset from "../assets/idle.png";
 import shootAsset from "../assets/shoot.png";
 import mapAsset from "../assets/map.png";
 import gunsAsset from "../assets/guns.png";
+import spaceInvadersMusic from "../assets/start2.mp3";
+import explosionSound from "../assets/explosion.wav";
+import level1Music from "../assets/level1.mp3";
 
 /**
  * Asset manifest - defines all assets that need to be loaded
@@ -48,6 +51,21 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     src: gunsAsset,
     description: "Bullet sprites",
   },
+  {
+    alias: "space-invaders-music",
+    src: spaceInvadersMusic,
+    description: "Space Invaders theme music",
+  },
+  {
+    alias: "explosion-sound",
+    src: explosionSound,
+    description: "Explosion sound effect",
+  },
+  {
+    alias: "level1-music",
+    src: level1Music,
+    description: "Level 1 background music",
+  },
 ];
 
 /**
@@ -85,9 +103,6 @@ export class AssetLoader {
     const aliases = this.assets.map((a) => a.alias);
     
     return new Promise((resolve, reject) => {
-      // Track individual asset loads
-      let loadedAssets = 0;
-
       // Load all assets
       PIXI.Assets.load(aliases, (progress) => {
         // PIXI's progress is 0 to 1

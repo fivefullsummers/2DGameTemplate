@@ -7,17 +7,33 @@ import HeroAnimated from "./HeroAnimated";
 import Level from "./Level";
 import CollisionDebug from "./CollisionDebug";
 import BulletManager, { BulletManagerRef } from "./BulletManager";
-import { PointerEvent, useRef } from "react";
+import { PointerEvent, useRef, useEffect } from "react";
 import { IPosition } from "../types/common";
 import { ControlsProvider } from "../contexts/ControlsContext";
 import MobileJoystick from "./MobileJoystick";
 import { useControlsContext } from "../contexts/ControlsContext";
+import { sound } from "@pixi/sound";
 
 const ExperienceContent = () => {
   const { width, height, scale } = useDimensions();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
   const bulletManagerRef = useRef<BulletManagerRef>(null);
   const { setJoystickDirection, getControlsDirection, consumeShootPress, isShootHeld } = useControlsContext();
+
+  // Play level music on mount
+  useEffect(() => {
+    const levelMusic = sound.find("level1-music");
+    if (levelMusic) {
+      levelMusic.play({ loop: true, volume: 0.3 });
+    }
+
+    // Stop music when component unmounts
+    return () => {
+      if (levelMusic) {
+        levelMusic.stop();
+      }
+    };
+  }, []);
 
   const handleStageClick = (event: PointerEvent) => {
     onClickMove.current?.({

@@ -1,8 +1,9 @@
 import { Container, Stage, Sprite, Text } from "@pixi/react";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import useDimensions from "../hooks/useDimensions";
 import ShaderBackground from "./ShaderBackground";
 import { TextStyle } from "pixi.js";
+import { sound } from "@pixi/sound";
 
 interface StartScreenProps {
   onStartGame: () => void;
@@ -67,7 +68,36 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
     [isHovering]
   );
 
+  // Play background music on mount
+  useEffect(() => {
+    // Play Space Invaders theme music on loop
+    const bgMusic = sound.find("space-invaders-music");
+    if (bgMusic) {
+      bgMusic.play({ loop: true, volume: 0.3 });
+    }
+
+    // Stop music when component unmounts
+    return () => {
+      if (bgMusic) {
+        bgMusic.stop();
+      }
+    };
+  }, []);
+
   const handleButtonClick = useCallback(() => {
+    // Play explosion sound
+    const explosionSfx = sound.find("explosion-sound");
+    if (explosionSfx) {
+      explosionSfx.play({ volume: 0.5 });
+    }
+
+    // Stop background music
+    const bgMusic = sound.find("space-invaders-music");
+    if (bgMusic) {
+      bgMusic.stop();
+    }
+
+    // Start the game
     onStartGame();
   }, [onStartGame]);
 

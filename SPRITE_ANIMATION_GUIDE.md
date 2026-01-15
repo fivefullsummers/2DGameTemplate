@@ -1,14 +1,227 @@
 # Sprite Animation Guide
 
+> **💡 Quick Start:** Looking for configuration options? Check [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) for an at-a-glance guide to common settings and adjustments.
+
 ## What is Sprite Animation?
 
 Sprite animation is a technique where you display a sequence of images (frames) rapidly to create the illusion of movement. Instead of storing each frame as a separate file, we use a **sprite sheet** - a single image containing all animation frames arranged in a grid.
 
-## Two Approaches to Sprite Animation
+This guide covers **manual frame management** implemented in `HeroAnimated.tsx`, which gives you precise control over animation timing, step completion, and state management.
 
-This guide covers two approaches:
-1. **Using AnimatedSprite** (recommended, simpler) - `HeroAnimatedSimple.tsx`
-2. **Manual frame management** (educational, more control) - `HeroAnimated.tsx`
+## Key Features of HeroAnimated
+
+The `HeroAnimated` component implements a production-ready sprite animation system with:
+
+✅ **Multi-sheet animation system** - Easily switch between walk, run, and other animation sheets  
+✅ **Step-based animation** - Tapping a key completes a step, holding continues animation  
+✅ **Frame-rate independence** - Consistent animation speed across all devices  
+✅ **Texture caching** - Memory-efficient sharing of sprites across multiple entities  
+✅ **Direction detection** - Automatically plays correct animation for movement direction  
+✅ **Smooth transitions** - Frame synchronization when switching between animations  
+✅ **Flexible frame sequences** - Support for any frame pattern (sequential, repeated, custom)  
+✅ **Idle frame management** - Automatic fallback to standing pose  
+✅ **State machine ready** - Easy to extend with attacks, jumps, and other actions  
+✅ **LPC sprite support** - Configured for standard 64×64 LPC sprite sheets  
+
+**Current Configuration:**
+- Walk sheet: 832×256 pixels (13 frames × 4 rows, frames 1-8 for walking, frame 0 for idle)
+- Run sheet: 512×256 pixels (8 frames × 4 rows)
+- Frame size: 64×64 pixels (scaled to 0.5 for 32px tiles)
+- Walk animation: 8 frames per direction (frame sequence: [1,2,3,4,5,6,7,8])
+- Run animation: 8 frames per direction (frame sequence: [0,1,2,3,4,5,6,7])
+- Shift key toggles between walk and run when moving
+
+## Multi-Sheet Animation System
+
+### Overview
+
+The animation system now supports **multiple sprite sheets** that can be dynamically switched during gameplay. This allows your character to have different animations (walk, run, attack, jump) each stored in separate sprite sheet files.
+
+### Animation Sheet Configuration
+
+Each animation sheet is defined with the following properties:
+
+```typescript
+interface AnimationSheet {
+  asset: string;             // Path to the sprite sheet image
+  frameSequence: number[];   // The sequence of frames to play
+  idleFrame: number | null;  // Frame to show when idle (null if none)
+  framesPerStep: number;     // Frames per step cycle
+  speed: number;             // Animation speed multiplier
+}
+```
+
+### Example Configuration
+
+```typescript
+const ANIMATION_SHEETS: Record<string, AnimationSheet> = {
+  walk: {
+    asset: heroWalkAsset,              // walk.png
+    frameSequence: [1, 2, 3, 4, 5, 6, 7, 8],  // Frames 1-8 for walking
+    idleFrame: 0,                      // Frame 0 is standing pose
+    framesPerStep: 3,                  // Complete 3 frames per step
+    speed: 0.15,                       // Moderate speed
+  },
+  run: {
+    asset: heroRunAsset,               // run.png
+    frameSequence: [0, 1, 2, 3, 4, 5, 6, 7],  // Frames 0-7 for running
+    idleFrame: null,                   // No idle frame in run.png
+    framesPerStep: 2,                  // Faster step completion
+    speed: 0.25,                       // Faster animation
+  },
+};
+```
+
+### Frame Sequences Explained
+
+The `frameSequence` array defines which frames to display and in what order:
+
+**Sequential frames:**
+```typescript
+frameSequence: [0, 1, 2, 3, 4, 5]  // Play frames 0-5 in order
+```
+
+**Repeated frames (for slower animations):**
+```typescript
+frameSequence: [0, 0, 0, 1, 1, 1, 2, 2, 2]  // Each frame shows 3 times
+```
+
+**Custom patterns:**
+```typescript
+frameSequence: [0, 1, 0, 2, 0, 3]  // Frame 0 between each frame
+frameSequence: [5, 4, 3, 2, 1]     // Reverse order
+```
+
+### Idle Frame Management
+
+**Key Concept:** The idle frame (usually frame 0) shows the character standing still. Not all sprite sheets include an idle frame.
+
+**How it works:**
+- **walk.png** has frame 0 for idle, frames 1-8 for walking
+- **run.png** only has frames 0-7 for running (no separate idle frame)
+- When the character stops, the system automatically switches to the walk sheet to display frame 0
+
+```typescript
+// Idle frame rendering logic
+if (!isWalking && !isAnimating) {
+  // Always use walk sheet for idle
+  textureToUse = textureCache.getTexture(ANIMATION_SHEETS.walk.asset);
+  actualFrame = ANIMATION_SHEETS.walk.idleFrame!;  // Frame 0
+} else {
+  // Use current animation sheet
+  actualFrame = currentSheet.frameSequence[currentFrame];
+}
+```
+
+### Smooth Animation Transitions
+
+When switching between animation sheets (e.g., walk → run), the system maintains the **relative position** in the animation cycle to create smooth transitions.
+
+**Frame Synchronization Algorithm:**
+```typescript
+// Calculate where we are in the current animation (0.0 to 1.0)
+const relativePosition = prevFrame / oldSheet.frameSequence.length;
+
+// Apply same position to new animation
+const newFrame = Math.floor(relativePosition * newSheet.frameSequence.length);
+```
+
+**Example:**
+- Currently at frame 4/8 (50%) in walk animation
+- Switch to run animation
+- Start at frame 4/8 (50%) in run animation
+- Result: Foot positions align, creating seamless transition
+
+### Using Multiple Animation Sheets
+
+**Step 1: Import sprite sheet assets**
+```typescript
+import heroWalkAsset from "../assets/walk.png";
+import heroRunAsset from "../assets/run.png";
+import heroAttackAsset from "../assets/attack.png";
+```
+
+**Step 2: Define animation sheets**
+```typescript
+const ANIMATION_SHEETS: Record<string, AnimationSheet> = {
+  walk: { /* ... */ },
+  run: { /* ... */ },
+  attack: {
+    asset: heroAttackAsset,
+    frameSequence: [0, 1, 2, 3, 4, 5],
+    idleFrame: null,
+    framesPerStep: 6,  // Play complete attack
+    speed: 0.3,        // Fast attack animation
+  },
+};
+```
+
+**Step 3: Switch sheets based on game logic**
+```typescript
+// Example: Run when Shift is held while moving
+const isRunning = moving && pressedKeys.includes("SHIFT");
+const targetSheetName = isRunning ? "run" : "walk";
+
+if (targetSheetName !== currentSheetName) {
+  setCurrentSheetName(targetSheetName);
+  // Frame synchronization happens automatically
+}
+```
+
+### Adding New Animation Sheets
+
+To add a new animation (e.g., jump):
+
+1. **Add the sprite sheet file** to `src/assets/`
+2. **Import it:**
+   ```typescript
+   import heroJumpAsset from "../assets/jump.png";
+   ```
+3. **Define the animation:**
+   ```typescript
+   jump: {
+     asset: heroJumpAsset,
+     frameSequence: [0, 1, 2, 3, 4],  // 5 frame jump
+     idleFrame: null,
+     framesPerStep: 5,                // Complete full jump
+     speed: 0.2,
+   },
+   ```
+4. **Add trigger logic:**
+   ```typescript
+   if (pressedKeys.includes("SPACE")) {
+     setCurrentSheetName("jump");
+   }
+   ```
+
+### Best Practices
+
+1. **Idle frames should be in one sheet**: Keep idle frame in walk.png as the default standing pose
+2. **Match frame counts for smooth transitions**: Similar frame counts (8 walk, 8 run) make transitions smoother
+3. **Use consistent frame dimensions**: All sheets should have the same frame width/height (64×64)
+4. **Organize by action type**: walk.png, run.png, attack.png, jump.png
+5. **Keep speed relative to action**: Run faster than walk (0.25 vs 0.15)
+6. **Adjust framesPerStep**: Shorter values (2) for quick actions, longer (3-4) for walking
+
+### Troubleshooting
+
+**Problem: Animation skips frames**
+- Check that `frameSequence` includes all desired frames
+- Verify frame numbers exist in the sprite sheet
+
+**Problem: Wrong frame shown when idle**
+- Ensure walk sheet has `idleFrame: 0`
+- Check that idle frame rendering logic uses walk sheet
+
+**Problem: Transition is jarring**
+- Ensure similar frame counts between animations
+- Verify frame synchronization is enabled
+- Check that corresponding frames have similar poses
+
+**Problem: Run animation doesn't trigger**
+- Verify Shift key is being detected in `useControls`
+- Check that both movement AND Shift must be true
+- Ensure `currentSheetName` state is updating
 
 ## Understanding Sprite Sheets
 
@@ -58,25 +271,27 @@ Width = 32 pixels
 Height = 32 pixels
 ```
 
-## Implementation Breakdown
+## Implementation Breakdown (HeroAnimated.tsx)
 
 ### 1. Configuration
 
 ```typescript
-const FRAME_WIDTH = 32;  // Each frame is 32x32 pixels
-const FRAME_HEIGHT = 32;
+const FRAME_WIDTH = 64;   // LPC frames are 64x64 pixels
+const FRAME_HEIGHT = 64;
 const ANIMATION_SPEED = 0.15; // Controls animation playback speed
+const FRAMES_PER_STEP = 3;    // One step = 3 frames (for tap controls)
+const TOTAL_FRAMES = 9;       // Total frames in walk animation
 ```
 
-### 2. Loading the Sprite Sheet
+### 2. Loading the Sprite Sheet with Caching
 
 ```typescript
-const baseTexture = useMemo(() => {
-  return PIXI.Texture.from(heroAnimAsset);
+const cachedTexture = useMemo(() => {
+  return textureCache.getTexture(heroAnimAsset);
 }, []);
 ```
 
-This creates a single texture from the entire sprite sheet image.
+This loads the texture from cache (or creates it if first time). Multiple hero instances share the same cached texture, saving memory.
 
 ### 3. Extracting Individual Frames
 
@@ -90,56 +305,61 @@ const currentTexture = useMemo(() => {
   const rectangle = new PIXI.Rectangle(x, y, FRAME_WIDTH, FRAME_HEIGHT);
   
   // Create a new texture showing only that region
-  const texture = new PIXI.Texture(baseTexture.baseTexture, rectangle);
+  const texture = new PIXI.Texture(cachedTexture.baseTexture, rectangle);
   
   return texture;
-}, [baseTexture, currentFrame, currentRow]);
+}, [cachedTexture, currentFrame, currentRow]);
 ```
 
 **PIXI.Rectangle** defines which portion of the sprite sheet to display:
 - `x, y`: Top-left corner of the frame
 - `width, height`: Size of the frame
 
-### 4. Frame Animation Loop
+### 4. Frame Animation Loop with Step Completion
 
-The animation loop has two parts:
+The animation loop tracks both key presses and animation state to ensure steps complete smoothly:
 
-#### A. Frame Accumulator Pattern
-
-```typescript
-const [frameAccumulator, setFrameAccumulator] = useState(0);
-
-setFrameAccumulator((prev) => {
-  const newAccumulator = prev + ANIMATION_SPEED * delta;
-  
-  if (newAccumulator >= 1) {
-    setCurrentFrame((frame) => (frame + 1) % 4);
-    return 0; // Reset
-  }
-  
-  return newAccumulator;
-});
-```
-
-**Why use an accumulator?**
-- `delta` varies based on frame rate (16ms at 60fps, 33ms at 30fps)
-- Direct increment would make animation speed depend on frame rate
-- Accumulator ensures consistent animation speed across different devices
-
-**How it works:**
-1. Add `ANIMATION_SPEED * delta` to accumulator
-2. When accumulator ≥ 1, advance to next frame
-3. Reset accumulator to 0
-4. This creates frame-rate-independent animation
-
-#### B. Cycling Through Frames
+#### A. Step-Based Frame Advancement
 
 ```typescript
-setCurrentFrame((frame) => (frame + 1) % 4);
+if (isWalking || isAnimating) {
+  setFrameAccumulator((prev) => {
+    const newAccumulator = prev + ANIMATION_SPEED * delta;
+    
+    if (newAccumulator >= 1) {
+      setCurrentFrame((frame) => {
+        const nextFrame = (frame + 1) % TOTAL_FRAMES;
+        
+        // Check if step complete (every 3 frames: 0→1→2→3, 3→4→5→6, etc.)
+        const isStepComplete = nextFrame % FRAMES_PER_STEP === 0;
+        
+        // Stop animating if step done and keys not pressed
+        if (isStepComplete && !isWalking) {
+          setIsAnimating(false);
+          return 0; // Reset to idle
+        }
+        
+        return nextFrame;
+      });
+      return 0;
+    }
+    
+    return newAccumulator;
+  });
+}
 ```
 
-The modulo operator (`%`) wraps the frame back to 0:
-- Frame 0 → Frame 1 → Frame 2 → Frame 3 → Frame 0 (loops)
+**How step completion works:**
+1. **Tap key**: Plays 3 frames (0→1→2), completes at frame 3, stops
+2. **Hold key**: Continuously cycles through all 9 frames
+3. **Release during step**: Finishes current 3-frame step, then stops
+4. **Step boundaries**: Frames 0-2 (step 1), 3-5 (step 2), 6-8 (step 3)
+
+**Why use FRAMES_PER_STEP?**
+- Ensures smooth animation even with quick key taps
+- Character always completes a full step
+- No jarring animation interruptions
+- Feels responsive and natural
 
 ### 5. Direction-Based Animation
 
@@ -168,31 +388,45 @@ This chooses the appropriate animation row based on the character's direction.
 
 ## State Management
 
-The component tracks several pieces of state:
+The component tracks animation state precisely:
 
 ```typescript
-const [currentFrame, setCurrentFrame] = useState(0);     // Which column (0-11)
-const [currentRow, setCurrentRow] = useState(0);         // Which row (0-7)
-const [frameAccumulator, setFrameAccumulator] = useState(0); // Timer for frames
-const [isWalking, setIsWalking] = useState(false);       // Is character moving?
+const [currentFrame, setCurrentFrame] = useState(0);     // Which frame (0-8)
+const [currentRow, setCurrentRow] = useState(2);         // Which row/direction (0-3)
+const [frameAccumulator, setFrameAccumulator] = useState(0); // Frame timing
+const [isWalking, setIsWalking] = useState(false);       // Keys pressed?
+const [isAnimating, setIsAnimating] = useState(false);   // Step in progress?
 ```
+
+**Dual state tracking:**
+- `isWalking`: True while keys are pressed
+- `isAnimating`: True while animation step is completing
+- This allows steps to finish even after keys released
 
 ## Animation Flow Diagram
 
 ```
-User Input
+User Input (Key Press)
     ↓
 Movement Direction Determined
     ↓
 Select Animation Row (UP/DOWN/LEFT/RIGHT)
     ↓
-Frame Accumulator Updates (every frame)
+Set isWalking = true, isAnimating = true
+    ↓
+Frame Accumulator Updates (every tick)
     ↓
 When Accumulator ≥ 1: Advance Frame
     ↓
-Extract Frame from Sprite Sheet
+Check if Step Complete (frame % 3 === 0)
     ↓
-Render to Screen
+If complete AND !isWalking: Stop → Reset to frame 0
+    ↓
+Else: Continue to next frame
+    ↓
+Extract Frame from Sprite Sheet using Rectangle
+    ↓
+Render Sprite to Screen
     ↓
 Loop back to Frame Accumulator
 ```
@@ -214,10 +448,19 @@ Instead of creating separate textures for each frame, we create "views" into dif
 ```typescript
 const currentTexture = useMemo(() => {
   // Create texture
-}, [baseTexture, currentFrame, currentRow]);
+}, [cachedTexture, currentFrame, currentRow]);
 ```
 
 This prevents recreating the texture every render. Only recreates when `currentFrame` or `currentRow` changes.
+
+### Texture Caching
+```typescript
+const cachedTexture = useMemo(() => {
+  return textureCache.getTexture(heroAnimAsset);
+}, []);
+```
+
+The texture cache ensures that multiple hero instances share the same base texture in memory, dramatically reducing memory usage when you have multiple animated entities.
 
 ## Customization Tips
 
@@ -390,6 +633,60 @@ When the character stops moving, you can:
 
 ## Common Patterns
 
+### Completing Animation Steps (Tap vs Hold)
+
+**Problem:** When you tap a direction key briefly, the animation only shows the first frame instead of completing a step.
+
+**Solution:** Define a "step" as a subset of frames and complete the step even if key is released:
+
+```typescript
+const FRAMES_PER_STEP = 3;  // One step = 3 frames (0→1→2)
+const TOTAL_FRAMES = 9;     // Total frames in walk animation
+
+const [isWalking, setIsWalking] = useState(false);      // Are keys pressed?
+const [isAnimating, setIsAnimating] = useState(false);  // Is animation cycle in progress?
+
+// Start animation when movement begins
+if (moving && !isAnimating) {
+  setIsAnimating(true);
+}
+
+// Keep animating until step completes
+if (isWalking || isAnimating) {
+  setFrameAccumulator((prev) => {
+    // ... accumulator logic ...
+    if (newAccumulator >= 1) {
+      setCurrentFrame((frame) => {
+        const nextFrame = (frame + 1) % TOTAL_FRAMES;
+        
+        // Step completes at frames 0, 3, 6, 9
+        const isStepComplete = nextFrame % FRAMES_PER_STEP === 0;
+        
+        // If step complete and not walking, stop
+        if (isStepComplete && !isWalking) {
+          setIsAnimating(false);
+          return 0; // Reset to idle frame
+        }
+        
+        return nextFrame;
+      });
+    }
+  });
+}
+```
+
+**How it works:**
+1. **Tap key:** Plays frames 0→1→2, then stops (one step)
+2. **Hold key:** Plays frames 0→1→2→3→4→5→6→7→8→0... (continuous walking)
+3. **Release during step:** Finishes current step (reaches next multiple of 3), then stops
+4. **Step boundaries:** Frames 0-2 (step 1), 3-5 (step 2), 6-8 (step 3)
+
+**Adjust step length:**
+```typescript
+const FRAMES_PER_STEP = 2;  // Shorter steps (0→1, 2→3, 4→5...)
+const FRAMES_PER_STEP = 4;  // Longer steps (0→1→2→3, 4→5→6→7...)
+```
+
 ### Start/End Frames
 If you only want to use frames 2-5 of a row:
 ```typescript
@@ -418,10 +715,80 @@ setCurrentFrame((frame) => {
 
 ## Performance Considerations
 
+### Texture Caching
+
+**Problem:** Creating multiple instances of the same entity (enemies, NPCs) loads the sprite sheet multiple times, wasting memory.
+
+**Solution:** Use a texture cache to share textures across all instances.
+
+```typescript
+// utils/textureCache.ts
+class TextureCache {
+  private cache = new Map<string, PIXI.Texture>();
+  
+  getTexture(assetPath: string): PIXI.Texture {
+    if (!this.cache.has(assetPath)) {
+      this.cache.set(assetPath, PIXI.Texture.from(assetPath));
+    }
+    return this.cache.get(assetPath)!;
+  }
+}
+
+export const textureCache = new TextureCache();
+
+// In your component (HeroAnimated.tsx)
+const cachedTexture = useMemo(() => {
+  return textureCache.getTexture(heroAnimAsset);
+}, []);
+```
+
+**Benefits:**
+- ✅ **Shared memory** - One texture in memory, used by all instances
+- ✅ **Automatic caching** - First instance loads, others reuse
+- ✅ **Clean API** - Components stay simple, no prop drilling
+- ✅ **Performance** - 100 enemies = 1 texture load instead of 100
+
+**Memory savings:**
+- Without cache: 10 heroes × 832×256 texture = ~2MB per hero = 20MB
+- With cache: 10 heroes × 1 shared texture = ~2MB total
+
+**Example usage with multiple entities:**
+
+```typescript
+// Experience.tsx
+<Container>
+  <HeroAnimated position={{x: 0, y: 0}} />
+  <HeroAnimated position={{x: 32, y: 0}} />  {/* Reuses cached texture! */}
+  <EnemyAnimated position={{x: 64, y: 0}} /> {/* Uses same cache system */}
+</Container>
+
+// All instances share the same base texture in memory
+// textureCache automatically handles the sharing
+// Memory used: 1 texture instead of 3!
+```
+
+**Cache management:**
+
+```typescript
+import { textureCache } from "./utils/textureCache";
+
+// Check cache size
+console.log(`Cached textures: ${textureCache.size}`);
+
+// Clear specific texture (e.g., when switching levels)
+textureCache.clearTexture(heroAnimAsset);
+
+// Clear all textures (e.g., on game exit)
+textureCache.clearAll();
+```
+
+### Other Performance Tips
+
 1. **Sprite sheet size**: Keep under 2048x2048 for compatibility
 2. **Frame count**: More frames = smoother animation but larger file
 3. **Texture updates**: Only update when frame changes (use useMemo)
 4. **Power of 2**: Use dimensions like 32x32, 64x64 for better GPU performance
+5. **useMemo**: Wrap texture creation to prevent unnecessary recalculations
 
 ## Debugging Tips
 
@@ -444,109 +811,87 @@ Draw a border around the sprite to verify frame extraction:
 ### Slow Down Animation
 Set `ANIMATION_SPEED = 0.05` to see individual frames clearly.
 
-## Approach 1: Using AnimatedSprite (Recommended)
+## How Manual Frame Management Works
 
-PixiJS provides a built-in `AnimatedSprite` component that handles frame cycling automatically. This is the **simpler and recommended approach** for most use cases.
+The `HeroAnimated` component gives you complete control over frame selection and timing. This approach is ideal for games where you need precise control over animation steps and state.
 
-### Implementation
+### Core Implementation
 
 ```typescript
-import { AnimatedSprite } from "@pixi/react";
+// 1. Load texture from cache
+const cachedTexture = useMemo(() => {
+  return textureCache.getTexture(heroAnimAsset);
+}, []);
 
-// Create array of textures for animation
-const animationTextures = useMemo(() => {
-  const frames = [];
-  for (let i = 0; i < frameCount; i++) {
-    const x = i * FRAME_WIDTH;
-    const y = row * FRAME_HEIGHT;
-    const rectangle = new PIXI.Rectangle(x, y, FRAME_WIDTH, FRAME_HEIGHT);
-    frames.push(new PIXI.Texture(baseTexture.baseTexture, rectangle));
+// 2. Create texture for current frame
+const currentTexture = useMemo(() => {
+  const x = currentFrame * FRAME_WIDTH;
+  const y = currentRow * FRAME_HEIGHT;
+  const rectangle = new PIXI.Rectangle(x, y, FRAME_WIDTH, FRAME_HEIGHT);
+  return new PIXI.Texture(cachedTexture.baseTexture, rectangle);
+}, [cachedTexture, currentFrame, currentRow]);
+
+// 3. Render sprite with current texture
+<Sprite texture={currentTexture} x={x} y={y} />
+```
+
+### Key Advantages
+
+- ✅ **Full control** over frame selection and timing
+- ✅ **Step-based animation** - Complete steps even when key released
+- ✅ **State machine ready** - Easy to add attack, jump, etc.
+- ✅ **Frame-perfect control** - Know exactly which frame is displaying
+- ✅ **Custom logic** - Implement any animation behavior you need
+- ✅ **Texture caching** - Memory-efficient sharing across entities
+
+### Animation State Management
+
+```typescript
+const [currentFrame, setCurrentFrame] = useState(0);     // Which frame (0-8)
+const [currentRow, setCurrentRow] = useState(2);         // Which animation row
+const [isWalking, setIsWalking] = useState(false);       // Keys pressed?
+const [isAnimating, setIsAnimating] = useState(false);   // Animation in progress?
+const [frameAccumulator, setFrameAccumulator] = useState(0); // Frame timing
+```
+
+### Frame Accumulator Pattern
+
+Ensures consistent animation speed regardless of frame rate:
+
+```typescript
+const ANIMATION_SPEED = 0.15; // Animation speed multiplier
+
+setFrameAccumulator((prev) => {
+  const newAccumulator = prev + ANIMATION_SPEED * delta;
+  
+  if (newAccumulator >= 1) {
+    setCurrentFrame((frame) => (frame + 1) % TOTAL_FRAMES);
+    return 0; // Reset accumulator
   }
-  return frames;
-}, [baseTexture]);
-
-// Use AnimatedSprite
-<AnimatedSprite
-  textures={animationTextures}
-  isPlaying={isWalking}
-  animationSpeed={8 / 60} // 8 FPS
-  x={position.x}
-  y={position.y}
-/>
+  
+  return newAccumulator;
+});
 ```
 
-### Key Props
-
-- **textures**: Array of PIXI.Texture objects for the animation
-- **isPlaying**: Boolean to start/stop animation
-- **animationSpeed**: Speed multiplier (0-1 scale, where 1 = 60 FPS)
-- **loop**: Whether to loop (default: true)
-- **onComplete**: Callback when animation finishes (for non-looping)
-
-### Advantages
-- ✅ Automatic frame cycling
-- ✅ Built-in play/pause control
-- ✅ Less boilerplate code
-- ✅ Handles looping automatically
-- ✅ No manual frame accumulator needed
-
-### When to Use
-- Standard looping animations (walking, running, idle)
-- When you want simple, clean code
-- When you don't need frame-by-frame control
-
-## Approach 2: Manual Frame Management
-
-The manual approach gives you complete control over frame selection and timing. This is useful for complex animation logic.
-
-### Advantages
-- ✅ Full control over frame selection
-- ✅ Can create complex animation logic
-- ✅ Can mix different frame ranges
-- ✅ Better for state machines
-
-### When to Use
-- Complex animation sequences
-- When you need to skip frames or reverse
-- Custom animation timing logic
-- Learning how animations work under the hood
-
-### Comparison
-
-| Feature | AnimatedSprite | Manual |
-|---------|---------------|--------|
-| Ease of use | ⭐⭐⭐⭐⭐ | ⭐⭐ |
-| Control | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| Code length | Short | Longer |
-| Performance | Optimized | Same |
-| Best for | Standard animations | Complex logic |
-
-## Converting FPS to Animation Speed
-
-AnimatedSprite uses a 0-1 scale where 1.0 = 60 FPS:
-
-```typescript
-const fps = 8; // Desired frames per second
-const animationSpeed = fps / 60; // Convert to PixiJS scale
-```
-
-Examples:
-- 6 FPS = 0.1 (slow walking)
-- 12 FPS = 0.2 (normal walking)
-- 30 FPS = 0.5 (fast action)
-- 60 FPS = 1.0 (very smooth)
+**Why use an accumulator?**
+- Delta varies with frame rate (60 FPS vs 30 FPS)
+- Direct increment would cause inconsistent animation speeds
+- Accumulator normalizes across different devices
 
 ## Summary
 
-Sprite animation works by:
-1. Loading a sprite sheet (grid of images)
-2. Extracting frames using rectangles to create texture arrays
-3. Either:
-   - **Simple**: Pass textures to AnimatedSprite and let it handle cycling
-   - **Advanced**: Manually update which frame to display each tick
-4. The animation creates the illusion of motion - like a flip book!
+Manual sprite animation works by:
+1. Loading a sprite sheet (grid of images) into texture cache
+2. Extracting one frame at a time using PIXI.Rectangle
+3. Displaying that frame as a Sprite
+4. Advancing to the next frame based on time accumulator
+5. Looping or stopping based on animation state
 
-**Recommendation**: Start with `AnimatedSprite` for cleaner code. Use manual approach only when you need special control over frame selection logic.
+This gives you precise control over every aspect of the animation - perfect for game development!
+
+---
+
+**📖 For quick configuration changes, see [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)**
 
 ---
 

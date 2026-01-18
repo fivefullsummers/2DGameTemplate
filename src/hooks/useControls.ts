@@ -19,6 +19,7 @@ export const useControls = () => {
   const [heldActions, setHeldActions] = useState<ActionKey[]>([])
   const [shootPressed, setShootPressed] = useState(false) // Track shoot key press events
   const [mobileDirection, setMobileDirection] = useState<Direction | null>(null) // Track mobile joystick input
+  const [mobileRun, setMobileRun] = useState(false) // Track mobile joystick run state
 
   const handleKey = useCallback((e: KeyboardEvent, isKeyDown: boolean) => {
     const direction = DIRECTION_KEYS[e.code]
@@ -76,17 +77,39 @@ export const useControls = () => {
       // Prioritize mobile direction if set, otherwise use keyboard
       const currentKey = mobileDirection || heldDirections[0];
       const directions = mobileDirection ? [mobileDirection] : heldDirections;
+      
+      // Include mobile run state in modifiers
+      const modifiers = mobileRun ? ['SHIFT' as ModifierKey, ...heldModifiers] : heldModifiers;
+      
       return {
         currentKey,
-        pressedKeys: [...directions, ...heldModifiers, ...heldActions] as PressedKey[]
+        pressedKeys: [...directions, ...modifiers, ...heldActions] as PressedKey[]
       };
     },
-    [heldDirections, heldModifiers, heldActions, mobileDirection]
+    [heldDirections, heldModifiers, heldActions, mobileDirection, mobileRun]
   )
 
   // Method to set direction from mobile joystick
   const setJoystickDirection = useCallback((direction: Direction | null) => {
     setMobileDirection(direction);
+  }, [])
+
+  // Method to set mobile run state from joystick
+  const setJoystickRun = useCallback((isRunning: boolean) => {
+    setMobileRun(isRunning);
+  }, [])
+
+  // Method to trigger shoot from mobile button
+  const triggerMobileShoot = useCallback(() => {
+    setShootPressed(true);
+    setHeldActions((prev) => {
+      return prev.includes('SHOOT') ? prev : ['SHOOT', ...prev];
+    });
+    
+    // Auto-release after a short delay
+    setTimeout(() => {
+      setHeldActions((prev) => prev.filter((action) => action !== 'SHOOT'));
+    }, 100);
   }, [])
 
   // Check if shoot was pressed and consume the event
@@ -103,5 +126,5 @@ export const useControls = () => {
     return heldActions.includes('SHOOT')
   }, [heldActions])
 
-  return { getControlsDirection, consumeShootPress, isShootHeld, setJoystickDirection }
+  return { getControlsDirection, consumeShootPress, isShootHeld, setJoystickDirection, setJoystickRun, triggerMobileShoot }
 }

@@ -62,8 +62,8 @@ basic: {
 ```typescript
 // In bullet-config.ts → BULLET_TYPES
 basic: {
-  row: 0,   // ← Row in guns.png (only row 0 available)
-  col: 0,   // ← Column in guns.png (0-3 available)
+  row: 0,   // ← Row in bullet.png (only row 0 available)
+  col: 0,   // ← Column in bullet.png (bullet.png is a single frame)
   scale: 0.5,  // ← Size multiplier
 }
 ```
@@ -103,13 +103,13 @@ shoot: {
 // 1. Add to BULLET_TYPES in bullet-config.ts
 myBullet: {
   name: "My Bullet",
-  spriteAsset: gunsAsset,
-  row: 0,  // ← guns.png only has row 0
-  col: 1,  // ← Use col 0-3
+  spriteAsset: bulletAsset,
+  row: 0,  // ← bullet.png only has row 0
+  col: 0,  // ← bullet.png is a single frame sprite
   speed: 6,
   damage: 15,
-  frameWidth: 32,
-  frameHeight: 32,
+  frameWidth: 17,
+  frameHeight: 17,
   scale: 0.5,
   lifetime: 2000,
 },

@@ -76,9 +76,9 @@ Edit `src/consts/bullet-config.ts` to customize bullets:
 export const BULLET_TYPES: Record<string, BulletConfig> = {
   basic: {
     name: "Basic Bullet",
-    spriteAsset: gunsAsset,
-    row: 1,                // Row in guns.png sprite sheet
-    col: 1,                // Column in guns.png sprite sheet
+    spriteAsset: bulletAsset,
+    row: 0,                // Row in bullet.png sprite sheet
+    col: 0,                // Column in bullet.png sprite sheet
     speed: 5,              // Pixels per frame
     damage: 10,            // Damage value
     frameWidth: 32,        // Frame width in sprite sheet
@@ -168,9 +168,9 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
   // ... existing bullets
   plasma: {
     name: "Plasma Bolt",
-    spriteAsset: gunsAsset,
-    row: 0,  // guns.png only has row 0
-    col: 3,  // Use an available column (0-3)
+    spriteAsset: bulletAsset,
+    row: 0,  // bullet.png only has row 0
+    col: 0,  // bullet.png is a single frame sprite
     speed: 7,
     damage: 15,
     frameWidth: 32,
@@ -204,31 +204,24 @@ export const GUN_TYPES: Record<string, GunConfig> = {
 
 ## Bullet Sprite Sheet Format
 
-The `guns.png` sprite sheet is organized in a single row:
+The `bullet.png` sprite is a single frame image:
 
 ```
-Dimensions: 112×32 pixels (3.5 frames × 1 row)
-
-     Col 0    Col 1    Col 2    Col 3
-Row 0 [Bul 0] [Bul 1] [Bul 2] [Bul 3]
+Dimensions: 17×17 pixels (single frame sprite)
 ```
 
 **Default bullet sprite:**
 - Row: 0 (only row available)
-- Col: 0 (first bullet sprite)
-- Size: 32×32 pixels per frame
-- Scaled to: 16×16 pixels (scale: 0.5)
+- Col: 0 (only column available)
+- Size: 17×17 pixels per frame
+- Scaled to: ~8.5×8.5 pixels (scale: 0.5)
 
-**Available bullet sprites:**
-- Col 0: Basic bullet
-- Col 1: Fast bullet (different sprite)
-- Col 2: Heavy bullet (different sprite)
-- Col 3: Additional sprite (if available)
+**Note:** All bullet types use the same sprite from `bullet.png`. They are differentiated by their properties (speed, damage, scale, lifetime) rather than different sprite frames.
 
-**To use a different sprite:**
-1. Set `row: 0` (guns.png only has 1 row)
-2. Set `col: 0-3` depending on which sprite you want
-3. Adjust `scale` if needed
+**To customize bullets:**
+1. All bullets use `row: 0` and `col: 0` (bullet.png is a single frame)
+2. Adjust `scale` to change visual size
+3. Adjust `speed`, `damage`, and `lifetime` for different bullet behaviors
 
 ## Shoot Animation
 
@@ -485,9 +478,9 @@ if (config.homing && target) {
 export const BULLET_TYPES = {
   explosive: {
     name: "Explosive Round",
-    spriteAsset: gunsAsset,
-    row: 0,  // guns.png only has row 0
-    col: 2,  // Use col 2 for a different sprite
+    spriteAsset: bulletAsset,
+    row: 0,  // bullet.png only has row 0
+    col: 0,  // bullet.png is a single frame sprite
     speed: 4,
     damage: 50,
     frameWidth: 32,

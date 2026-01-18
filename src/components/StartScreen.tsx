@@ -1,4 +1,4 @@
-import { Container, Stage, Sprite, Text } from "@pixi/react";
+import { Container, Stage, Text } from "@pixi/react";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import useDimensions from "../hooks/useDimensions";
 import ShaderBackground from "./ShaderBackground";
@@ -109,7 +109,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
       {/* Title */}
       <Container x={width / 2} y={height / 3}>
         <Text
-          text="2D GAME"
+          text="INJOZILAND"
           anchor={0.5}
           style={titleStyle}
           scale={{ x: titleScale, y: titleScale }}
@@ -135,7 +135,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
       </Container>
 
       {/* Instructions or subtitle (optional) */}
-      <Container x={width / 2} y={height - 80}>
+      {/* <Container x={width / 2} y={height - 80}>
         <Text
           text="Click to Start"
           anchor={0.5}
@@ -148,7 +148,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
             })
           }
         />
-      </Container>
+      </Container> */}
     </Stage>
   );
 };

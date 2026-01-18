@@ -16,7 +16,7 @@ A complete, configurable shooting system with the following features:
    - Collision detection with walls
    - Auto-destroy after lifetime expires
    - Rotates based on direction
-   - Uses sprite from guns.png (row 1, col 1 by default)
+   - Uses sprite from bullet.png (17×17 pixels, single frame)
 
 3. **`BulletManager.tsx`** - Manages all active bullets
    - Spawns bullets via ref
@@ -74,9 +74,9 @@ A complete, configurable shooting system with the following features:
 ```typescript
 myBullet: {
   name: "My Bullet",
-  spriteAsset: gunsAsset,
-  row: 0,  // guns.png only has row 0
-  col: 1,  // Use col 0-3
+  spriteAsset: bulletAsset,
+  row: 0,  // bullet.png only has row 0
+  col: 0,  // bullet.png is a single frame sprite
   speed: 7,
   damage: 20,
   frameWidth: 32,

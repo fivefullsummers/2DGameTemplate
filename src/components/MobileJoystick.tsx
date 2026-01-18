@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Direction } from '../types/common';
 
 interface MobileJoystickProps {
   onDirectionChange: (direction: Direction | null) => void;
+  onRunChange?: (isRunning: boolean) => void;
 }
 
-const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
+const MobileJoystick = ({ onDirectionChange, onRunChange }: MobileJoystickProps) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [currentDirection, setCurrentDirection] = useState<Direction | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
   const joystickRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef<HTMLDivElement>(null);
+  const currentDirectionRef = useRef<Direction | null>(null);
 
   const calculateDirection = (centerX: number, centerY: number, touchX: number, touchY: number): Direction | null => {
     const deltaX = touchX - centerX;
@@ -36,12 +38,7 @@ const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
     }
   };
 
-  const handleStart = (clientX: number, clientY: number) => {
-    setIsDragging(true);
-    handleMove(clientX, clientY);
-  };
-
-  const handleMove = (clientX: number, clientY: number) => {
+  const handleMove = useCallback((clientX: number, clientY: number) => {
     if (!joystickRef.current || !stickRef.current) return;
 
     const rect = joystickRef.current.getBoundingClientRect();
@@ -50,8 +47,8 @@ const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
 
     const direction = calculateDirection(centerX, centerY, clientX, clientY);
     
-    if (direction !== currentDirection) {
-      setCurrentDirection(direction);
+    if (direction !== currentDirectionRef.current) {
+      currentDirectionRef.current = direction;
       onDirectionChange(direction);
     }
 
@@ -60,6 +57,16 @@ const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
     const deltaY = clientY - centerY;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     const maxDistance = 40; // Maximum distance the stick can move
+    const runThreshold = 25; // Distance threshold to trigger running (about 60% of max)
+
+    // Check if we should be running based on distance
+    setIsRunning((prevRunning) => {
+      const shouldRun = distance >= runThreshold;
+      if (shouldRun !== prevRunning) {
+        onRunChange?.(shouldRun);
+      }
+      return shouldRun;
+    });
 
     if (distance > maxDistance) {
       const angle = Math.atan2(deltaY, deltaX);
@@ -67,18 +74,25 @@ const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
     } else {
       stickRef.current.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
     }
-  };
+  }, [onDirectionChange, onRunChange]);
 
-  const handleEnd = () => {
+  const handleStart = useCallback((clientX: number, clientY: number) => {
+    setIsDragging(true);
+    handleMove(clientX, clientY);
+  }, [handleMove]);
+
+  const handleEnd = useCallback(() => {
     setIsDragging(false);
-    setCurrentDirection(null);
+    currentDirectionRef.current = null;
+    setIsRunning(false);
     onDirectionChange(null);
+    onRunChange?.(false);
     
     // Reset stick position
     if (stickRef.current) {
       stickRef.current.style.transform = 'translate(0px, 0px)';
     }
-  };
+  }, [onDirectionChange, onRunChange]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
@@ -119,7 +133,7 @@ const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, handleMove, handleEnd]);
 
   return (
     <div
@@ -130,8 +144,8 @@ const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
       onMouseDown={handleMouseDown}
       style={{
         position: 'fixed',
-        bottom: '80px',
-        left: '80px',
+        bottom: '30px',
+        left: '30px',
         width: '120px',
         height: '120px',
         backgroundColor: 'rgba(0, 0, 0, 0.3)',
@@ -150,11 +164,12 @@ const MobileJoystick = ({ onDirectionChange }: MobileJoystickProps) => {
         style={{
           width: '50px',
           height: '50px',
-          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backgroundColor: isRunning ? 'rgba(100, 255, 100, 0.8)' : 'rgba(255, 255, 255, 0.7)',
           borderRadius: '50%',
-          border: '2px solid rgba(255, 255, 255, 0.9)',
+          border: isRunning ? '3px solid rgba(100, 255, 100, 1)' : '2px solid rgba(255, 255, 255, 0.9)',
           transition: isDragging ? 'none' : 'transform 0.2s ease-out',
           pointerEvents: 'none',
+          boxShadow: isRunning ? '0 0 15px rgba(100, 255, 100, 0.8)' : 'none',
         }}
       />
       

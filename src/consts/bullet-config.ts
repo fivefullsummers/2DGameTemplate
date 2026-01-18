@@ -1,8 +1,9 @@
-import gunsAsset from "../assets/guns.png";
+import bulletAsset from "../assets/misc/bullet.png";
 
-// Frame dimensions for guns.png sprite sheet
-export const GUN_FRAME_WIDTH = 32;
-export const GUN_FRAME_HEIGHT = 32;
+// Frame dimensions for bullet.png sprite sheet
+// bullet.png is 17x17 pixels (single frame sprite)
+export const BULLET_FRAME_WIDTH = 17;
+export const BULLET_FRAME_HEIGHT = 17;
 
 // Bullet configuration interface
 export interface BulletConfig {
@@ -19,41 +20,42 @@ export interface BulletConfig {
 }
 
 // Predefined bullet types - easily configurable
-// Note: guns.png is 112x32 pixels = 3-4 frames x 1 row
+// Note: bullet.png is 17x17 pixels (single frame sprite)
+// All bullet types use the same sprite, differentiated by speed, scale, and damage
 export const BULLET_TYPES: Record<string, BulletConfig> = {
   basic: {
     name: "Basic Bullet",
-    spriteAsset: gunsAsset,
-    row: 0,                // Row 0 (guns.png only has 1 row)
-    col: 0,                // Col 0 in guns.png
+    spriteAsset: bulletAsset,
+    row: 0,                // Row 0 (bullet.png only has 1 row)
+    col: 0,                // Col 0 in bullet.png
     speed: 5,              // 5 pixels per frame
     damage: 10,
-    frameWidth: GUN_FRAME_WIDTH,
-    frameHeight: GUN_FRAME_HEIGHT,
-    scale: 0.5,            // Scale down to 16x16
+    frameWidth: BULLET_FRAME_WIDTH,
+    frameHeight: BULLET_FRAME_HEIGHT,
+    scale: 0.5,            // Scale down to ~8.5x8.5
     lifetime: 2000,        // 2 seconds
   },
   fast: {
     name: "Fast Bullet",
-    spriteAsset: gunsAsset,
-    row: 0,                // Row 0 (guns.png only has 1 row)
-    col: 1,                // Different column for visual variety
+    spriteAsset: bulletAsset,
+    row: 0,                // Row 0 (bullet.png only has 1 row)
+    col: 0,                // Same sprite, different properties
     speed: 8,              // Faster
     damage: 8,
-    frameWidth: GUN_FRAME_WIDTH,
-    frameHeight: GUN_FRAME_HEIGHT,
-    scale: 0.4,
+    frameWidth: BULLET_FRAME_WIDTH,
+    frameHeight: BULLET_FRAME_HEIGHT,
+    scale: 0.4,            // Smaller
     lifetime: 1500,
   },
   heavy: {
     name: "Heavy Bullet",
-    spriteAsset: gunsAsset,
-    row: 0,                // Row 0 (guns.png only has 1 row)
-    col: 2,                // Different column for visual variety
+    spriteAsset: bulletAsset,
+    row: 0,                // Row 0 (bullet.png only has 1 row)
+    col: 0,                // Same sprite, different properties
     speed: 3,              // Slower
     damage: 25,            // More damage
-    frameWidth: GUN_FRAME_WIDTH,
-    frameHeight: GUN_FRAME_HEIGHT,
+    frameWidth: BULLET_FRAME_WIDTH,
+    frameHeight: BULLET_FRAME_HEIGHT,
     scale: 0.7,            // Larger
     lifetime: 3000,
   },

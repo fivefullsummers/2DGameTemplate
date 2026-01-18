@@ -1,15 +1,19 @@
 import * as PIXI from "pixi.js";
 
 // Import all assets
-import walkAsset from "../assets/walk.png";
-import runAsset from "../assets/run.png";
-import idleAsset from "../assets/idle.png";
-import shootAsset from "../assets/shoot.png";
+import heroWalkAsset from "../assets/hero/walk.png";
+import heroRunAsset from "../assets/hero/run.png";
+import heroIdleAsset from "../assets/hero/idle.png";
+import heroShootAsset from "../assets/hero/shoot.png";
+import enemyWalkAsset from "../assets/enemies/walk.png";
+import enemyRunAsset from "../assets/enemies/run.png";
+import enemyIdleAsset from "../assets/enemies/idle.png";
 import mapAsset from "../assets/map.png";
-import gunsAsset from "../assets/guns.png";
-import spaceInvadersMusic from "../assets/start2.mp3";
-import explosionSound from "../assets/explosion.wav";
-import level1Music from "../assets/level1.mp3";
+import gunsAsset from "../assets/misc/bullet.png";
+import spaceInvadersMusic from "../assets/sounds/start2.mp3";
+import explosionSound from "../assets/sounds/explosion.wav";
+import poundSound from "../assets/sounds/Pound.wav";
+import level1Music from "../assets/sounds/level1.mp3";
 
 /**
  * Asset manifest - defines all assets that need to be loaded
@@ -23,23 +27,38 @@ export interface AssetDefinition {
 export const ASSET_MANIFEST: AssetDefinition[] = [
   {
     alias: "hero-walk",
-    src: walkAsset,
+    src: heroWalkAsset,
     description: "Hero walking animation",
   },
   {
     alias: "hero-run",
-    src: runAsset,
+    src: heroRunAsset,
     description: "Hero running animation",
   },
   {
     alias: "hero-idle",
-    src: idleAsset,
+    src: heroIdleAsset,
     description: "Hero idle animation",
   },
   {
     alias: "hero-shoot",
-    src: shootAsset,
+    src: heroShootAsset,
     description: "Hero shooting animation",
+  },
+  {
+    alias: "enemy-walk",
+    src: enemyWalkAsset,
+    description: "Enemy walking animation",
+  },
+  {
+    alias: "enemy-run",
+    src: enemyRunAsset,
+    description: "Enemy running animation",
+  },
+  {
+    alias: "enemy-idle",
+    src: enemyIdleAsset,
+    description: "Enemy idle animation",
   },
   {
     alias: "level-map",
@@ -60,6 +79,11 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     alias: "explosion-sound",
     src: explosionSound,
     description: "Explosion sound effect",
+  },
+  {
+    alias: "pound-sound",
+    src: poundSound,
+    description: "Pound sound effect for shooting",
   },
   {
     alias: "level1-music",

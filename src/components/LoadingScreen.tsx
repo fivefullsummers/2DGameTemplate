@@ -27,7 +27,7 @@ const LoadingScreen = ({ progress, currentAsset, error }: LoadingScreenProps) =>
   return (
     <div className="loading-screen">
       <div className="loading-container">
-        <h1 className="loading-title">2D Game</h1>
+        <h1 className="loading-title">Loading Assets</h1>
         
         {error ? (
           <div className="loading-error">

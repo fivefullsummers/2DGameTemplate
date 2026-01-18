@@ -6,6 +6,8 @@ interface ControlsContextType {
   consumeShootPress: ReturnType<typeof useControls>['consumeShootPress'];
   isShootHeld: ReturnType<typeof useControls>['isShootHeld'];
   setJoystickDirection: ReturnType<typeof useControls>['setJoystickDirection'];
+  setJoystickRun: ReturnType<typeof useControls>['setJoystickRun'];
+  triggerMobileShoot: ReturnType<typeof useControls>['triggerMobileShoot'];
 }
 
 const ControlsContext = createContext<ControlsContextType | null>(null);

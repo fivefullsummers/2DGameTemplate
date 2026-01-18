@@ -1,16 +1,17 @@
 import { Sprite, useTick } from "@pixi/react";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import * as PIXI from "pixi.js";
-import heroWalkAsset from "../assets/walk.png";
-import heroRunAsset from "../assets/run.png";
-import heroIdleAsset from "../assets/idle.png";
-import heroShootAsset from "../assets/shoot.png";
-import { TILE_SIZE } from "../consts/game-world";
+import { sound } from "@pixi/sound";
+import heroWalkAsset from "../assets/hero/walk.png";
+import heroRunAsset from "../assets/hero/run.png";
+import heroIdleAsset from "../assets/hero/idle.png";
+import heroShootAsset from "../assets/hero/shoot.png";
+import { TILE_SIZE, COLS, ROWS } from "../consts/game-world";
 import { textureCache } from "../utils/textureCache";
 import { isBlocked } from "../consts/collision-map";
 import { BulletManagerRef } from "./BulletManager";
 import { GUN_TYPES, DEFAULT_GUN_TYPE } from "../consts/bullet-config";
-import { Direction } from "../types/common";
+import { Direction, IPosition } from "../types/common";
 
 // Sprite sheet configuration - LPC (Liberated Pixel Cup) format
 const FRAME_WIDTH = 64;  // LPC sprites are 64x64 pixels per frame
@@ -78,16 +79,56 @@ interface HeroAnimatedProps {
   getControlsDirection: () => { currentKey: Direction, pressedKeys: PressedKey[] };
   consumeShootPress: () => boolean;
   isShootHeld: () => boolean;
+  positionRef?: React.MutableRefObject<IPosition>;
+  enemyPositionRef?: React.MutableRefObject<IPosition>;
 }
+
+// Helper function to check collision between two positions
+// Using a smaller threshold (60% of tile size) to allow entities to get closer
+const checkEntityCollision = (pos1: IPosition, pos2: IPosition, threshold: number = TILE_SIZE * 0.6): boolean => {
+  const dx = (pos1.x + TILE_SIZE / 2) - (pos2.x + TILE_SIZE / 2);
+  const dy = (pos1.y + TILE_SIZE / 2) - (pos2.y + TILE_SIZE / 2);
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  return distance < threshold;
+};
+
+// Check if movement is away from another entity (allows separation)
+const isMovingAway = (currentPos: IPosition, newPos: IPosition, otherPos: IPosition): boolean => {
+  const currentDx = (currentPos.x + TILE_SIZE / 2) - (otherPos.x + TILE_SIZE / 2);
+  const currentDy = (currentPos.y + TILE_SIZE / 2) - (otherPos.y + TILE_SIZE / 2);
+  const currentDist = Math.sqrt(currentDx * currentDx + currentDy * currentDy);
+  
+  const newDx = (newPos.x + TILE_SIZE / 2) - (otherPos.x + TILE_SIZE / 2);
+  const newDy = (newPos.y + TILE_SIZE / 2) - (otherPos.y + TILE_SIZE / 2);
+  const newDist = Math.sqrt(newDx * newDx + newDy * newDy);
+  
+  // If new distance is greater than current distance, we're moving away
+  return newDist > currentDist;
+};
 
 const HeroAnimated = ({ 
   bulletManagerRef, 
   gunType = DEFAULT_GUN_TYPE,
   getControlsDirection,
   consumeShootPress,
-  isShootHeld
+  isShootHeld,
+  positionRef,
+  enemyPositionRef
 }: HeroAnimatedProps) => {
-  const [position, setPosition] = useState({ x: 100, y: 100 });
+  // Calculate center of map for hero spawn
+  // Map is (COLS - 2) tiles wide and (ROWS - 2) tiles tall (accounting for padding)
+  // Each tile is TILE_SIZE pixels
+  const centerX = ((COLS - 2) * TILE_SIZE) / 2;
+  const centerY = ((ROWS - 2) * TILE_SIZE) / 2;
+  const [position, setPosition] = useState({ x: centerX, y: centerY });
+  
+  // Keep position ref in sync with position state
+  useEffect(() => {
+    if (positionRef) {
+      positionRef.current = position;
+    }
+  }, [position, positionRef]);
+  
   const [currentFrame, setCurrentFrame] = useState(0);
   const [currentRow, setCurrentRow] = useState(ANIMATIONS.IDLE_DOWN);
   const [currentSheetName, setCurrentSheetName] = useState<string>("idle");
@@ -155,6 +196,12 @@ const HeroAnimated = ({
       if (shouldShoot) {
         setIsShooting(true);
         lastShotTime.current = now;
+        
+        // Play shooting sound
+        const poundSfx = sound.find("pound-sound");
+        if (poundSfx) {
+          poundSfx.play({ volume: 0.5 });
+        }
         
         // Spawn bullet in the direction hero is facing
         const bulletOffsetX = position.x + TILE_SIZE / 2;
@@ -255,9 +302,27 @@ const HeroAnimated = ({
         const newX = x + dx * speedMultiplier;
         const newY = y + dy * speedMultiplier;
 
-        // Check collision - if blocked, don't move
+        // Check collision with walls - if blocked, don't move
         if (isBlocked(newX, newY)) {
           return prev;
+        }
+
+        // Check collision with enemy
+        if (enemyPositionRef?.current) {
+          const newPos = { x: newX, y: newY };
+          const wouldCollide = checkEntityCollision(newPos, enemyPositionRef.current);
+          
+          if (wouldCollide) {
+            // Allow movement if we're moving away from the enemy (prevents getting stuck)
+            if (!isMovingAway(prev, newPos, enemyPositionRef.current)) {
+              return prev;
+            }
+          }
+        }
+
+        // Update position ref
+        if (positionRef) {
+          positionRef.current = { x: newX, y: newY };
         }
 
         return { x: newX, y: newY };

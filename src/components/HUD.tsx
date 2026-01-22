@@ -30,12 +30,6 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
     return score.toString().padStart(6, '0');
   };
 
-  // Calculate progress percentage for wave
-  const getWaveProgress = (): number => {
-    if (state.totalEnemies === 0) return 0;
-    const destroyed = state.totalEnemies - state.enemiesRemaining;
-    return Math.round((destroyed / state.totalEnemies) * 100);
-  };
 
   return (
     <div className="hud-container">
@@ -70,21 +64,6 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
           </div>
         </div>
       </div>
-
-      {/* Enemy Counter */}
-      {/* <div className="hud-enemy-counter">
-        <div className="enemy-counter-bar">
-          <div className="enemy-counter-label">
-            ENEMIES: {state.enemiesRemaining} / {state.totalEnemies}
-          </div>
-          <div className="enemy-progress-bar">
-            <div 
-              className="enemy-progress-fill"
-              style={{ width: `${getWaveProgress()}%` }}
-            />
-          </div>
-        </div>
-      </div> */}
 
       {/* Debug Info (optional) */}
       {showDebugInfo && (

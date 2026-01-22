@@ -36,7 +36,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
     () =>
       new TextStyle({
         fontFamily: "Arial Black, Arial",
-        fontSize: 72,
+        fontSize: 18,
         fontWeight: "bold",
         fill: ["#ffffff", "#00ff88"], // gradient
         stroke: "#000000",
@@ -54,7 +54,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
     () =>
       new TextStyle({
         fontFamily: "Arial Black, Arial",
-        fontSize: 36,
+        fontSize: 14,
         fontWeight: "bold",
         fill: isHovering ? "#00ff88" : "#ffffff",
         stroke: "#000000",
@@ -109,7 +109,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
       {/* Title */}
       <Container x={width / 2} y={height / 3}>
         <Text
-          text="Place Invaders"
+          text="Invaders"
           anchor={0.5}
           style={titleStyle}
           scale={{ x: titleScale, y: titleScale }}

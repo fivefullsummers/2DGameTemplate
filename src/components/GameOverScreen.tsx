@@ -43,16 +43,11 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
     () =>
       new TextStyle({
         fontFamily: "Arial Black, Arial",
-        fontSize: 64,
+        fontSize: 20,
         fontWeight: "bold",
         fill: ["#ff0000", "#ff6666"], // red gradient
         stroke: "#000000",
-        strokeThickness: 6,
-        dropShadow: true,
-        dropShadowColor: "#000000",
-        dropShadowBlur: 8,
-        dropShadowAngle: Math.PI / 6,
-        dropShadowDistance: 6,
+        strokeThickness: 6
       }),
     []
   );
@@ -61,16 +56,11 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
     () =>
       new TextStyle({
         fontFamily: "Arial Black, Arial",
-        fontSize: 48,
+        fontSize: 16,
         fontWeight: "bold",
         fill: ["#ffff00", "#ffaa00"], // gold gradient
         stroke: "#000000",
-        strokeThickness: 5,
-        dropShadow: true,
-        dropShadowColor: "#000000",
-        dropShadowBlur: 6,
-        dropShadowAngle: Math.PI / 6,
-        dropShadowDistance: 4,
+        strokeThickness: 5
       }),
     []
   );
@@ -79,10 +69,10 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
     () =>
       new TextStyle({
         fontFamily: "Arial",
-        fontSize: 28,
+        fontSize: 14,
         fill: "#ffffff",
         stroke: "#000000",
-        strokeThickness: 3,
+        strokeThickness: 2,
       }),
     []
   );
@@ -91,7 +81,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
     () => (isHovering: boolean) =>
       new TextStyle({
         fontFamily: "Arial Black, Arial",
-        fontSize: 32,
+        fontSize: 14,
         fontWeight: "bold",
         fill: isHovering ? "#00ff88" : "#ffffff",
         stroke: "#000000",
@@ -130,7 +120,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
 
       {/* New High Score message (if applicable) */}
       {isNewHighScore && (
-        <Container x={width / 2} y={height / 5 + 80}>
+        <Container x={width / 2} y={height / 5 + 20}>
           <Text
             text="NEW HIGH SCORE!"
             anchor={0.5}
@@ -140,7 +130,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
       )}
 
       {/* Stats Display */}
-      <Container x={width / 2} y={height / 2 - 60}>
+      <Container x={width / 2} y={height / 2 - 40}>
         <Text
           text={`FINAL SCORE: ${finalState.score}`}
           anchor={0.5}
@@ -156,7 +146,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
         />
       </Container>
 
-      <Container x={width / 2} y={height / 2 + 20}>
+      <Container x={width / 2} y={height / 2 + 5}>
         <Text
           text={`WAVE: ${finalState.wave}`}
           anchor={0.5}

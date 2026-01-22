@@ -26,6 +26,7 @@ export const useControls = () => {
     
     // Handle direction keys
     if (direction) {
+      e.preventDefault() // Prevent default arrow key behavior (page scroll)
       setHeldDirections((prev) => {
         if (isKeyDown) {
           return prev.includes(direction) ? prev : [direction, ...prev]
@@ -48,6 +49,7 @@ export const useControls = () => {
 
     // Handle action keys (Space for shooting)
     if (e.code === 'Space') {
+      e.preventDefault() // Prevent default spacebar behavior (page scroll)
       if (isKeyDown) {
         setShootPressed(true) // Signal a shoot event
         setHeldActions((prev) => {

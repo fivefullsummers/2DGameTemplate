@@ -8,6 +8,7 @@ import { TILE_SIZE } from "../consts/game-world";
 import { textureCache } from "../utils/textureCache";
 import { IPosition } from "../types/common";
 import { isBlocked } from "../consts/collision-map";
+import { ENEMY_SCALE } from "../consts/enemy-config";
 
 // Sprite sheet configuration - LPC (Liberated Pixel Cup) format
 const FRAME_WIDTH = 64;  // LPC sprites are 64x64 pixels per frame
@@ -240,7 +241,7 @@ const EnemyAnimated = ({
       texture={currentTexture}
       x={position.x + TILE_SIZE / 2}
       y={position.y + TILE_SIZE / 2}
-      scale={0.5}
+      scale={ENEMY_SCALE}
       anchor={0.5}
     />
   );

@@ -12,7 +12,7 @@ interface StartScreenProps {
 const StartScreen = ({ onStartGame }: StartScreenProps) => {
   const { width, height } = useDimensions();
   const [isHovering, setIsHovering] = useState(false);
-  const [titleScale, setTitleScale] = useState(1);
+  const [titleScale, setTitleScale] = useState(1 / 2);
 
   // Animate title with a pulsing effect
   useMemo(() => {
@@ -109,7 +109,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
       {/* Title */}
       <Container x={width / 2} y={height / 3}>
         <Text
-          text="INJOZILAND"
+          text="Place Invaders"
           anchor={0.5}
           style={titleStyle}
           scale={{ x: titleScale, y: titleScale }}

@@ -1,4 +1,5 @@
 html,
+body,
 #root {
   height: 100vh;
   padding: 0;
@@ -7,4 +8,31 @@ html,
   display: flex;
   justify-content: center;
   align-items: center;
+  
+  /* Prevent text selection on mobile */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  
+  /* Prevent iOS callout menu */
+  -webkit-touch-callout: none;
+  
+  /* Prevent tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Prevent pull-to-refresh and overscroll effects */
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
+
+/* Ensure canvas doesn't allow text selection */
+canvas {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
 }

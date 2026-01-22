@@ -60,13 +60,8 @@ const MobileJoystick = ({ onDirectionChange, onRunChange }: MobileJoystickProps)
     const runThreshold = 25; // Distance threshold to trigger running (about 60% of max)
 
     // Check if we should be running based on distance
-    setIsRunning((prevRunning) => {
-      const shouldRun = distance >= runThreshold;
-      if (shouldRun !== prevRunning) {
-        onRunChange?.(shouldRun);
-      }
-      return shouldRun;
-    });
+    const shouldRun = distance >= runThreshold;
+    setIsRunning(shouldRun);
 
     if (distance > maxDistance) {
       const angle = Math.atan2(deltaY, deltaX);
@@ -74,7 +69,7 @@ const MobileJoystick = ({ onDirectionChange, onRunChange }: MobileJoystickProps)
     } else {
       stickRef.current.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
     }
-  }, [onDirectionChange, onRunChange]);
+  }, [onDirectionChange]);
 
   const handleStart = useCallback((clientX: number, clientY: number) => {
     setIsDragging(true);
@@ -111,6 +106,11 @@ const MobileJoystick = ({ onDirectionChange, onRunChange }: MobileJoystickProps)
     e.preventDefault();
     handleStart(e.clientX, e.clientY);
   };
+
+  // Notify parent about running state changes
+  useEffect(() => {
+    onRunChange?.(isRunning);
+  }, [isRunning, onRunChange]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

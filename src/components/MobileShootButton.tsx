@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import gunImage from '../assets/hero/gun_image.png';
 
 interface MobileShootButtonProps {
   onShoot: () => void;
@@ -42,11 +43,18 @@ const MobileShootButton = ({ onShoot }: MobileShootButtonProps) => {
         userSelect: 'none',
         zIndex: 1000,
         cursor: 'pointer',
-        fontSize: '36px',
         transition: 'background-color 0.1s ease',
       }}
     >
-      🔫
+      <img 
+        src={gunImage} 
+        alt="Shoot" 
+        style={{ 
+          width: '60px', 
+          height: '60px',
+          pointerEvents: 'none'
+        }} 
+      />
     </div>
   );
 };

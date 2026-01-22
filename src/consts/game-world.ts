@@ -9,4 +9,7 @@ export const SPEED = 2
 export const OFFSET_X = 0;
 export const OFFSET_Y = TILE_SIZE / 2;
 
+// Collision constants
+export const ENEMY_COLLISION_MULTIPLIER = 10.0; // Makes enemy hitbox 5x larger than visual sprite for better gameplay
+
 

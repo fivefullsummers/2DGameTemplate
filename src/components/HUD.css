@@ -1,0 +1,343 @@
+/**
+ * HUD Styles - Classic Space Invaders Arcade Style
+ * Retro green monochrome display with CRT-style effects
+ */
+
+.hud-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  pointer-events: none;
+  font-family: 'Courier New', 'Consolas', monospace;
+  color: #00ff00;
+  text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff0080;
+}
+
+/* Top HUD Bar */
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.7) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  gap: 30px;
+}
+
+/* HUD Section */
+.hud-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Labels */
+.hud-label {
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  opacity: 0.8;
+  color: #00cc00;
+}
+
+/* Values */
+.hud-value {
+  font-size: 24px;
+  font-weight: bold;
+  letter-spacing: 3px;
+}
+
+/* Score Specific Styling */
+.score-value {
+  color: #00ff00;
+  font-size: 28px;
+  animation: scoreGlow 2s ease-in-out infinite;
+}
+
+@keyframes scoreGlow {
+  0%, 100% {
+    text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff0080;
+  }
+  50% {
+    text-shadow: 0 0 15px #00ff00, 0 0 30px #00ff0080, 0 0 40px #00ff0040;
+  }
+}
+
+/* High Score Styling */
+.high-score-value {
+  color: #ffff00;
+  text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff0080;
+}
+
+/* Wave Styling */
+.wave-value {
+  color: #00ffff;
+  font-size: 32px;
+  text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff80;
+}
+
+/* Lives Display */
+.hud-lives-display {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.life-icon {
+  font-size: 20px;
+  color: #00ff00;
+  text-shadow: 0 0 8px #00ff00;
+  animation: lifePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes lifePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+.game-over-indicator {
+  color: #ff0000;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  animation: gameOverFlash 0.5s ease-in-out infinite;
+  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff000080;
+}
+
+@keyframes gameOverFlash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Enemy Counter */
+.hud-enemy-counter {
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.enemy-counter-bar {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.enemy-counter-label {
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 5px;
+  text-align: center;
+  color: #00ff00;
+}
+
+.enemy-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid #00ff00;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.enemy-progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    #00ff00 0%,
+    #00cc00 50%,
+    #00ff00 100%
+  );
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px #00ff00;
+  animation: progressPulse 1s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Messages (Wave Complete, Extra Life, etc.) */
+.hud-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 30px 50px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 3px solid #00ff00;
+  border-radius: 10px;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.2);
+  animation: messageAppear 0.5s ease-out;
+}
+
+@keyframes messageAppear {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.message-text {
+  font-size: 48px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  color: #00ff00;
+  text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff0080;
+  animation: messagePulse 1s ease-in-out infinite;
+}
+
+@keyframes messagePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.message-subtext {
+  font-size: 18px;
+  letter-spacing: 2px;
+  margin-top: 10px;
+  color: #00cc00;
+  opacity: 0.8;
+}
+
+/* Extra Life Message Specific */
+.extra-life-message {
+  border-color: #ffff00;
+  box-shadow: 0 0 30px rgba(255, 255, 0, 0.5), inset 0 0 20px rgba(255, 255, 0, 0.2);
+  animation: messageAppear 0.5s ease-out, extraLifeFadeOut 2s ease-out 1s forwards;
+}
+
+.extra-life-message .message-text {
+  color: #ffff00;
+  text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff0080;
+}
+
+@keyframes extraLifeFadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(0.8);
+  }
+}
+
+/* Debug Info */
+.hud-debug {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #00ff00;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.debug-section {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 5px 0;
+}
+
+.debug-label {
+  color: #00cc00;
+  opacity: 0.8;
+}
+
+.debug-value {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hud-top {
+    padding: 10px;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+
+  .hud-label {
+    font-size: 10px;
+  }
+
+  .hud-value {
+    font-size: 16px;
+  }
+
+  .score-value {
+    font-size: 18px;
+  }
+
+  .wave-value {
+    font-size: 20px;
+  }
+
+  .life-icon {
+    font-size: 14px;
+  }
+
+  .message-text {
+    font-size: 28px;
+  }
+
+  .message-subtext {
+    font-size: 14px;
+  }
+
+  .hud-message {
+    padding: 20px 30px;
+  }
+}
+
+/* CRT Scanline Effect (optional, can be disabled) */
+.hud-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 1001;
+  opacity: 0.3;
+}

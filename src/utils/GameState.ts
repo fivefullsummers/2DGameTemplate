@@ -132,7 +132,7 @@ export class GameState {
    * Calculate and add score for enemy kill based on row
    */
   public addEnemyKillScore(rowIndex: number): void {
-    let points = SCORE_VALUES.ENEMY_BOTTOM;
+    let points: number = SCORE_VALUES.ENEMY_BOTTOM;
     
     // Determine points based on row (top rows are worth more)
     if (rowIndex === 0) {

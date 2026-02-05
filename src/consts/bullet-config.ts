@@ -95,9 +95,9 @@ export const GUN_TYPES: Record<string, GunConfig> = {
   },
   machineGun: {
     name: "Machine Gun",
-    bulletType: "fast",
+    bulletType: "Heavy Bullet",
     fireRate: 100,         // 100ms between shots
-    automatic: true,       // Hold key to fire
+    automatic: false,       // Hold key to fire
   },
   cannon: {
     name: "Cannon",
@@ -108,10 +108,19 @@ export const GUN_TYPES: Record<string, GunConfig> = {
   spaceInvaders: {
     name: "Space Invaders Gun",
     bulletType: "spaceInvadersBullet",
-    fireRate: 0,         // 500ms cooldown (can only shoot after bullet is gone)
+    fireRate: 0,
     automatic: false,      // Space Invaders is single-shot
+  },
+  // One-press-one-shot gun with zero cooldown.
+  // Uses the basic bullet config but does not impose any time delay
+  // between shots; each press immediately fires a bullet.
+  instantShot: {
+    name: "Instant Shot",
+    bulletType: "basic",
+    fireRate: 300,         // 300ms cooldown shown in UI
+    automatic: false,    // one press = one shot
   },
 };
 
 // Default gun type
-export const DEFAULT_GUN_TYPE = "pistol";
+export const DEFAULT_GUN_TYPE = "Machine Gun";

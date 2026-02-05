@@ -1,24 +1,26 @@
-import { useRef, useEffect, useMemo } from "react";
-import * as PIXI from "pixi.js";
+import { useMemo, useRef, useEffect } from "react";
 import { Container } from "@pixi/react";
-import vertexShader from "../shaders/startScreen/vertex.glsl?raw";
-import fragmentShader from "../shaders/startScreen/fragment.glsl?raw";
+import * as PIXI from "pixi.js";
 
-interface StartScreenBackgroundProps {
+interface PlaneBackgroundProps {
   width: number;
   height: number;
 }
 
-const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) => {
+// Full-screen plane mesh background.
+// For now this is just a solid dark blue color; later
+// we can swap the material for a custom shader.
+const PlaneBackground = ({ width, height }: PlaneBackgroundProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);
 
+  // Simple quad geometry covering the full screen
   const geometry = useMemo(() => {
     const positions = [
-      0, height,
-      width, height,
-      width, 0,
-      0, 0,
+      0, height,      // bottom-left
+      width, height,  // bottom-right
+      width, 0,       // top-right
+      0, 0,           // top-left
     ];
 
     const uvs = [
@@ -41,15 +43,12 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
     return geom;
   }, [width, height]);
 
-  const shader = useMemo(() => {
-    const program = PIXI.Program.from(
-      vertexShader,
-      fragmentShader,
-      "startScreenShader"
-    );
-    return new PIXI.MeshMaterial(PIXI.Texture.WHITE, {
-      program,
-    });
+  const material = useMemo(() => {
+    const mat = new PIXI.MeshMaterial(PIXI.Texture.WHITE);
+    // Solid dark blue so we can see the background
+    mat.tint = 0x050b30;
+    mat.alpha = 1.0;
+    return mat;
   }, []);
 
   useEffect(() => {
@@ -57,7 +56,7 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
     if (!container) return;
 
     if (!meshRef.current) {
-      const mesh = new PIXI.Mesh(geometry, shader);
+      const mesh = new PIXI.Mesh(geometry, material);
       mesh.x = 0;
       mesh.y = 0;
       meshRef.current = mesh;
@@ -74,9 +73,10 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
         meshRef.current = null;
       }
     };
-  }, [geometry, shader]);
+  }, [geometry, material]);
 
   return <Container ref={containerRef} />;
 };
 
-export default StartScreenBackground;
+export default PlaneBackground;
+

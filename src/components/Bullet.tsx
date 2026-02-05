@@ -5,7 +5,7 @@ import { BulletConfig } from "../consts/bullet-config";
 import { COLLISION_MAP, COLLISION_SUB_TILE_SIZE, COLLISION_ROWS, COLLISION_COLS } from "../consts/collision-map";
 import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
 import { IPosition } from "../types/common";
-import { ENEMY_SCALE } from "../consts/enemy-config";
+import { ENEMY_SCALE } from "../consts/tuning-config";
 
 export interface BulletProps {
   id: string;

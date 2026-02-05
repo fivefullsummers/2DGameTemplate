@@ -188,6 +188,15 @@ export class GameState {
   }
 
   /**
+   * Force game over (e.g. when enemies reach the player line).
+   * Sets lives to 0 and notifies subscribers.
+   */
+  public triggerGameOver(): void {
+    this.lives = 0;
+    this.notifyStateChange();
+  }
+
+  /**
    * Check if wave is complete
    */
   public isWaveComplete(): boolean {

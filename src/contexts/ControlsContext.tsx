@@ -8,6 +8,8 @@ interface ControlsContextType {
   setJoystickDirection: ReturnType<typeof useControls>['setJoystickDirection'];
   setJoystickRun: ReturnType<typeof useControls>['setJoystickRun'];
   triggerMobileShoot: ReturnType<typeof useControls>['triggerMobileShoot'];
+  shotCooldownInfo: ReturnType<typeof useControls>['shotCooldownInfo'];
+  notifyShotFired: ReturnType<typeof useControls>['notifyShotFired'];
 }
 
 const ControlsContext = createContext<ControlsContextType | null>(null);

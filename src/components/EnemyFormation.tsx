@@ -1,12 +1,14 @@
 import { Container, useTick, Sprite } from "@pixi/react";
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import * as PIXI from "pixi.js";
-import { ENEMY_SCALE } from "../consts/enemy-config";
+import { ENEMY_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
+import { isMobile } from "../consts/game-world";
 import { TILE_SIZE, COLS } from "../consts/game-world";
 import { IPosition } from "../types/common";
 import EnemyBullet from "./EnemyBullet";
 import { textureCache } from "../utils/textureCache";
 import enemyAnimatedAsset from "../assets/enemies/enemy.png";
+import { gameState } from "../utils/GameState";
 
 // Enemy animation configuration
 // Frame sequence: 0 -> 1 -> 2 -> 1 -> 0 (5-step cycle)
@@ -74,6 +76,12 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
       });
     }
   });
+
+  // Same easing as player: lerp display position toward target for smooth movement
+  const ACCELERATION_FACTOR = 0.18; // 0–1, higher = snappier, lower = more floaty
+
+  // Display positions (eased); logical position stays in positionRef for gameplay
+  const displayPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   // Space Invaders movement parameters
   const HORIZONTAL_STEP = TILE_SIZE / 8; // Small step per move (4 pixels)
@@ -226,6 +234,29 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
     // Only move non-exploding enemies
     const activeEnemies = enemies.filter((e) => !e.isExploding);
     if (activeEnemies.length === 0) return;
+
+    // Ease display position toward logical position (same feel as player movement)
+    let displayUpdated = false;
+    activeEnemies.forEach((enemy) => {
+      let display = displayPositionsRef.current.get(enemy.id);
+      const target = enemy.positionRef.current;
+      if (!display) {
+        display = { x: target.x, y: target.y };
+        displayPositionsRef.current.set(enemy.id, display);
+      }
+      display.x += (target.x - display.x) * ACCELERATION_FACTOR;
+      display.y += (target.y - display.y) * ACCELERATION_FACTOR;
+      displayUpdated = true;
+    });
+    // Clean up display positions for removed enemies
+    displayPositionsRef.current.forEach((_, id) => {
+      if (!enemies.some((e) => e.id === id)) {
+        displayPositionsRef.current.delete(id);
+      }
+    });
+    if (displayUpdated) {
+      forceUpdate((prev) => prev + 1);
+    }
     
     // Handle movement
     const moveDelay = getMoveDelay();
@@ -240,6 +271,19 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
         activeEnemies.forEach((enemy) => {
           enemy.positionRef.current.y += VERTICAL_STEP;
         });
+
+        // Space Invaders rule:
+        // If any enemy has moved to or past the player's line,
+        // the game is immediately over.
+        const bottomMostY = activeEnemies.reduce(
+          (maxY, enemy) => Math.max(maxY, enemy.positionRef.current.y),
+          -Infinity
+        );
+        if (bottomMostY >= PLAYER_START_Y) {
+          gameState.triggerGameOver();
+          return;
+        }
+
         setDirection((prev) => (prev === 1 ? -1 : 1));
         forceUpdate((prev) => prev + 1); // Trigger re-render
       } else {
@@ -318,20 +362,37 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
     return new PIXI.Texture(enemyBaseTexture.baseTexture, rectangle);
   }, [enemyBaseTexture, explosionBaseTexture]);
 
+  // Log enemy sprite size on mobile once the base texture is ready
+  useEffect(() => {
+    if (!isMobile()) return;
+    if (!enemyBaseTexture.baseTexture || enemyBaseTexture.baseTexture.width === 0) return;
+
+    const baseW = enemyBaseTexture.baseTexture.width;
+    const baseH = enemyBaseTexture.baseTexture.height;
+    const scale = ENEMY_SCALE;
+
+    console.log(
+      `[EnemyFormation] mobile enemy sprite size: ${baseW * scale} x ${baseH * scale} (base ${baseW} x ${baseH}, scale ${scale})`
+    );
+  }, [enemyBaseTexture]);
+
   // Render enemies and bullets
   return (
     <Container>
       {/* Enemy sprites */}
-      {enemies.map((enemy) => (
-        <Sprite
-          key={enemy.id}
-          texture={getEnemyTexture(enemy.id, enemy.isExploding || false)}
-          x={enemy.positionRef.current.x}
-          y={enemy.positionRef.current.y}
-          scale={ENEMY_SCALE}
-          anchor={0.5}
-        />
-      ))}
+      {enemies.map((enemy) => {
+        const display = displayPositionsRef.current.get(enemy.id) ?? enemy.positionRef.current;
+        return (
+          <Sprite
+            key={enemy.id}
+            texture={getEnemyTexture(enemy.id, enemy.isExploding || false)}
+            x={display.x}
+            y={display.y}
+            scale={ENEMY_SCALE}
+            anchor={0.5}
+          />
+        );
+      })}
       
       {/* Enemy bullets */}
       {enemyBullets.map((bullet) => (

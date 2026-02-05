@@ -63,7 +63,7 @@ const EnemyBullet = ({
       const newY = prev.y + speed * delta;
 
       // Check if off screen (bottom)
-      if (newY > TILE_SIZE * 14) {
+      if (newY > TILE_SIZE * 35) {
         setShouldDestroy(true);
         return prev;
       }

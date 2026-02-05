@@ -5,7 +5,7 @@ import enemyRed2 from "../assets/enemies/enemyRed2.png";
 import enemyRed3 from "../assets/enemies/enemyRed3.png";
 import enemyRed4 from "../assets/enemies/enemyRed4.png";
 import enemyRed5 from "../assets/enemies/enemyRed5.png";
-import { ENEMY_SCALE } from "../consts/enemy-config";
+import { ENEMY_SCALE } from "../consts/tuning-config";
 import { TILE_SIZE, COLS } from "../consts/game-world";
 import { IPosition } from "../types/common";
 

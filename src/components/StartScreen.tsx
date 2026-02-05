@@ -1,7 +1,7 @@
 import { Container, Stage, Text } from "@pixi/react";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import useDimensions from "../hooks/useDimensions";
-import BoxShaderBackground from "./BoxShaderBackground";
+import StartScreenBackground from "./StartScreenBackground";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 
@@ -104,7 +104,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
   return (
     <Stage width={width} height={height}>
       {/* Shader Background Mesh */}
-      <BoxShaderBackground width={width} height={height} />
+      <StartScreenBackground width={width} height={height} />
 
       {/* Title */}
       <Container x={width / 2} y={height / 3}>

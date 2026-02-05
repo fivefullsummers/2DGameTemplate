@@ -97,7 +97,15 @@ const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwo
           style={{
             fontSize: '32px',
             color: 'rgba(0, 0, 0, 0.8)',
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '1em',
+            height: '1em',
+            transform: 'translateX(-1px)',
           }}
+          aria-hidden
         >
           ◄
         </span>
@@ -130,7 +138,15 @@ const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwo
           style={{
             fontSize: '32px',
             color: 'rgba(0, 0, 0, 0.8)',
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '1em',
+            height: '1em',
+            transform: 'translateX(1px)',
           }}
+          aria-hidden
         >
           ►
         </span>

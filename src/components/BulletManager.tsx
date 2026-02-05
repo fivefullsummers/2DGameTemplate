@@ -1,5 +1,6 @@
 import { Container } from "@pixi/react";
 import { useState, useCallback, forwardRef, useImperativeHandle, RefObject } from "react";
+import { sound } from "@pixi/sound";
 import Bullet from "./Bullet";
 import { BULLET_TYPES, BulletConfig } from "../consts/bullet-config";
 import { IPosition } from "../types/common";
@@ -41,13 +42,13 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
     ) => {
       // Check bullet limit (Space Invaders allows only 1 bullet)
       if (maxBullets !== undefined && bullets.length >= maxBullets) {
-        return; // Don't spawn if at max
+        return; // Don't spawn if at max (no sound)
       }
 
       const config = BULLET_TYPES[bulletType];
       if (!config) {
         console.warn(`Unknown bullet type: ${bulletType}`);
-        return;
+        return; // No bullet, so no sound
       }
 
       const newBullet: BulletData = {
@@ -59,6 +60,12 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
       };
 
       setBullets((prev) => [...prev, newBullet]);
+
+      // Play shooting sound ONLY when a bullet was actually spawned.
+      const poundSfx = sound.find("pound-sound");
+      if (poundSfx) {
+        poundSfx.play({ volume: 0.5 });
+      }
     },
     [maxBullets, bullets.length]
   );

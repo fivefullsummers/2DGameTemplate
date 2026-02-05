@@ -7,7 +7,7 @@ import { Graphics, useTick } from "@pixi/react";
 import { Graphics as PixiGraphics } from "pixi.js";
 import { useCallback, useRef } from "react";
 import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
-import { ENEMY_SCALE } from "../consts/enemy-config";
+import { ENEMY_SCALE } from "../consts/tuning-config";
 import { IPosition } from "../types/common";
 
 interface EnemyData {

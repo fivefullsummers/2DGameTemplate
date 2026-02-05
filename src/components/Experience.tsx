@@ -1,5 +1,5 @@
 import { Container, Stage } from "@pixi/react";
-import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
+import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER, GAME_HEIGHT } from "../consts/game-world";
 import useDimensions from "../hooks/useDimensions";
 
 // import HeroMouse from "./HeroMouse";
@@ -14,7 +14,7 @@ import HUD from "./HUD";
 import { PointerEvent, useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { IPosition } from "../types/common";
 import { ControlsProvider } from "../contexts/ControlsContext";
-import MobileJoystick from "./MobileJoystick";
+import MobileTwoButtonController from "./MobileTwoButtonController";
 import MobileShootButton from "./MobileShootButton";
 import { useControlsContext } from "../contexts/ControlsContext";
 import { sound } from "@pixi/sound";
@@ -198,27 +198,42 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   const PLAYER_RADIUS = TILE_SIZE / 2;
   const ENEMY_RADIUS = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2;
 
+  // Shift the entire game world down so it sits closer
+  // to the bottom of the screen (above the mobile buttons).
+  const verticalOffset = Math.max(0, height - GAME_HEIGHT * scale - 120);
+
   return (
-    <>
+    <div
+      style={{
+        position: 'relative',
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        overflow: 'hidden',
+      }}
+    >
       <HUD showDebugInfo={false} />
-      <CollisionInfo 
+      <CollisionInfo
         isVisible={showCollisionDebug}
         playerRadius={PLAYER_RADIUS}
         enemyRadius={ENEMY_RADIUS}
       />
       <Stage width={width} height={height} onPointerDown={handleStageClick}>
-        <Container scale={scale}>
+        <Container scale={scale} y={verticalOffset}>
           <Level />
           <CollisionDebug />
-          <BulletManager 
-            ref={bulletManagerRef} 
+          <BulletManager
+            ref={bulletManagerRef}
             enemyPositionsRef={enemyPositionsRef}
             onEnemyHit={triggerEnemyExplosion}
             maxBullets={1} // Space Invaders style: only 1 bullet on screen
           />
           {/* <HeroMouse onClickMove={onClickMove} /> */}
-          <PlayerAnimated 
-            bulletManagerRef={bulletManagerRef} 
+          <PlayerAnimated
+            bulletManagerRef={bulletManagerRef}
             gunType="spaceInvaders"
             getControlsDirection={getControlsDirection}
             consumeShootPress={consumeShootPress}
@@ -227,23 +242,28 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
             playerRef={playerRef}
           />
           {/* Enemies in Space Invaders formation (all move together) */}
-          <EnemyFormation 
+          <EnemyFormation
             enemies={enemies}
             onEnemyRemove={removeEnemy}
             playerPositionRef={playerPositionRef}
             onPlayerHit={handlePlayerHit}
           />
           {/* Entity collision boundaries visualization */}
-          <EntityCollisionDebug 
+          <EntityCollisionDebug
             isVisible={showCollisionDebug}
             playerPositionRef={playerPositionRef}
             enemies={enemies}
           />
         </Container>
       </Stage>
-      <MobileJoystick onDirectionChange={setJoystickDirection} onRunChange={setJoystickRun} />
+      {/* Mobile movement controls: use new two-button controller for left/right only.
+          Swap back to MobileJoystick if you want analog movement again. */}
+      <MobileTwoButtonController
+        onDirectionChange={setJoystickDirection}
+        onRunChange={setJoystickRun}
+      />
       <MobileShootButton onShoot={triggerMobileShoot} />
-    </>
+    </div>
   );
 };
 

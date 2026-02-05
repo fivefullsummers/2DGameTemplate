@@ -29,8 +29,8 @@ const MobileShootButton = ({ onShoot }: MobileShootButtonProps) => {
         position: 'fixed',
         bottom: '30px',
         right: '30px',
-        width: '100px',
-        height: '100px',
+        width: '60px',
+        height: '60px',
         backgroundColor: isPressed 
           ? 'rgba(255, 100, 100, 0.6)' 
           : 'rgba(255, 50, 50, 0.4)',
@@ -50,8 +50,8 @@ const MobileShootButton = ({ onShoot }: MobileShootButtonProps) => {
         src={gunImage} 
         alt="Shoot" 
         style={{ 
-          width: '60px', 
-          height: '60px',
+          width: '40px', 
+          height: '40px',
           pointerEvents: 'none'
         }} 
       />

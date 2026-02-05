@@ -1,7 +1,7 @@
 import { Container, Stage, Text } from "@pixi/react";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import useDimensions from "../hooks/useDimensions";
-import ShaderBackground from "./ShaderBackground";
+import BoxShaderBackground from "./BoxShaderBackground";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 
@@ -103,8 +103,8 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
 
   return (
     <Stage width={width} height={height}>
-      {/* Shader Background */}
-      <ShaderBackground width={width} height={height} />
+      {/* Shader Background Mesh */}
+      <BoxShaderBackground width={width} height={height} />
 
       {/* Title */}
       <Container x={width / 2} y={height / 3}>
@@ -133,22 +133,6 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
           scale={{ x: isHovering ? 1.1 : 1, y: isHovering ? 1.1 : 1 }}
         />
       </Container>
-
-      {/* Instructions or subtitle (optional) */}
-      {/* <Container x={width / 2} y={height - 80}>
-        <Text
-          text="Click to Start"
-          anchor={0.5}
-          style={
-            new TextStyle({
-              fontFamily: "Arial",
-              fontSize: 18,
-              fill: "#cccccc",
-              alpha: 0.7 + Math.sin(Date.now() * 0.003) * 0.3, // Blinking effect
-            })
-          }
-        />
-      </Container> */}
     </Stage>
   );
 };

@@ -1,7 +1,3 @@
-// Vertex Shader for Background
-// You can customize this shader as needed
-
-export const vertexShader = `
 attribute vec2 aPosition;
 attribute vec2 aUV;
 
@@ -15,4 +11,3 @@ void main() {
     vec3 position = projectionMatrix * translationMatrix * vec3(aPosition, 1.0);
     gl_Position = vec4(position.xy, 0.0, 1.0);
 }
-`;

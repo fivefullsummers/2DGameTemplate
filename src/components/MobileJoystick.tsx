@@ -57,11 +57,13 @@ const MobileJoystick = ({ onDirectionChange, onRunChange }: MobileJoystickProps)
     const deltaY = clientY - centerY;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     const maxDistance = 40; // Maximum distance the stick can move
-    const runThreshold = 25; // Distance threshold to trigger running (about 60% of max)
+    // const runThreshold = 25; // Distance threshold to trigger running (about 60% of max)
 
     // Check if we should be running based on distance
-    const shouldRun = distance >= runThreshold;
-    setIsRunning(shouldRun);
+    // const shouldRun = distance >= runThreshold;
+    // const shouldRun = false;
+
+    // setIsRunning(shouldRun);
 
     if (distance > maxDistance) {
       const angle = Math.atan2(deltaY, deltaX);

@@ -8,7 +8,7 @@ import { TILE_SIZE } from "../consts/game-world";
 import { textureCache } from "../utils/textureCache";
 import { IPosition } from "../types/common";
 import { isBlocked } from "../consts/collision-map";
-import { ENEMY_SCALE } from "../consts/enemy-config";
+import { ENEMY_SCALE } from "../consts/tuning-config";
 
 // Sprite sheet configuration - LPC (Liberated Pixel Cup) format
 const FRAME_WIDTH = 64;  // LPC sprites are 64x64 pixels per frame

@@ -1,12 +1,43 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
 import gunImage from '../assets/hero/gun_image.png';
 
 interface MobileShootButtonProps {
   onShoot: () => void;
+  shotCooldownInfo: { lastShotTime: number; fireRate: number } | null;
 }
 
-const MobileShootButton = ({ onShoot }: MobileShootButtonProps) => {
+const MobileShootButton = ({ onShoot, shotCooldownInfo }: MobileShootButtonProps) => {
+  const buttonRef = useRef<HTMLDivElement | null>(null);
   const [isPressed, setIsPressed] = useState(false);
+
+  // Animate background color from red (just fired) to green (ready)
+  useEffect(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+
+    // If we don't have cooldown info or fireRate is 0, just set to ready (green).
+    if (!shotCooldownInfo || shotCooldownInfo.fireRate <= 0) {
+      gsap.set(el, { backgroundColor: 'rgba(0, 255, 102, 0.6)' }); // green
+      return;
+    }
+
+    const { fireRate } = shotCooldownInfo;
+
+    // Kill any existing tween on this element
+    gsap.killTweensOf(el);
+
+    // Start from red and ease to green over fireRate duration
+    gsap.fromTo(
+      el,
+      { backgroundColor: 'rgba(255, 51, 51, 0.6)' },  // red
+      {
+        backgroundColor: 'rgba(0, 255, 102, 0.6)',    // green
+        duration: fireRate / 1000,
+        ease: 'power2.out',
+      }
+    );
+  }, [shotCooldownInfo]);
 
   const handleStart = (e: React.TouchEvent | React.MouseEvent) => {
     e.preventDefault();
@@ -20,6 +51,7 @@ const MobileShootButton = ({ onShoot }: MobileShootButtonProps) => {
 
   return (
     <div
+      ref={buttonRef}
       onTouchStart={handleStart}
       onTouchEnd={handleEnd}
       onMouseDown={handleStart}
@@ -29,11 +61,8 @@ const MobileShootButton = ({ onShoot }: MobileShootButtonProps) => {
         position: 'fixed',
         bottom: '30px',
         right: '30px',
-        width: '100px',
-        height: '100px',
-        backgroundColor: isPressed 
-          ? 'rgba(255, 100, 100, 0.6)' 
-          : 'rgba(255, 50, 50, 0.4)',
+        width: '60px',
+        height: '60px',
         borderRadius: '50%',
         border: '3px solid rgba(255, 255, 255, 0.7)',
         display: 'flex',
@@ -43,15 +72,14 @@ const MobileShootButton = ({ onShoot }: MobileShootButtonProps) => {
         userSelect: 'none',
         zIndex: 1000,
         cursor: 'pointer',
-        transition: 'background-color 0.1s ease',
       }}
     >
       <img 
         src={gunImage} 
         alt="Shoot" 
         style={{ 
-          width: '60px', 
-          height: '60px',
+          width: '40px', 
+          height: '40px',
           pointerEvents: 'none'
         }} 
       />

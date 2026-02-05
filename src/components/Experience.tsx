@@ -1,11 +1,10 @@
 import { Container, Stage } from "@pixi/react";
-import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
+import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER, GAME_WIDTH, isMobile } from "../consts/game-world";
 import useDimensions from "../hooks/useDimensions";
 
 // import HeroMouse from "./HeroMouse";
 import PlayerAnimated, { PlayerRef } from "./PlayerAnimated";
 import EnemyFormation from "./EnemyFormation";
-import Level from "./Level";
 import CollisionDebug from "./CollisionDebug";
 import EntityCollisionDebug from "./EntityCollisionDebug";
 import CollisionInfo from "./CollisionInfo";
@@ -14,13 +13,14 @@ import HUD from "./HUD";
 import { PointerEvent, useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { IPosition } from "../types/common";
 import { ControlsProvider } from "../contexts/ControlsContext";
-import MobileJoystick from "./MobileJoystick";
+import MobileTwoButtonController from "./MobileTwoButtonController";
 import MobileShootButton from "./MobileShootButton";
 import { useControlsContext } from "../contexts/ControlsContext";
 import { sound } from "@pixi/sound";
 import { getEnemyPositions } from "../consts/enemies-map";
 import { gameState } from "../utils/GameState";
-import { ENEMY_SCALE } from "../consts/enemy-config";
+import { ENEMY_SCALE } from "../consts/tuning-config";
+import PlaneBackground from "./PlaneBackground";
 
 interface ExperienceContentProps {
   onGameOver: () => void;
@@ -32,9 +32,18 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   const bulletManagerRef = useRef<BulletManagerRef>(null);
   const playerPositionRef = useRef<IPosition>({ x: 0, y: 0 });
   const playerRef = useRef<PlayerRef | null>(null);
-  const { setJoystickDirection, setJoystickRun, getControlsDirection, consumeShootPress, isShootHeld, triggerMobileShoot } = useControlsContext();
+  const { 
+    setJoystickDirection, 
+    setJoystickRun, 
+    getControlsDirection, 
+    consumeShootPress, 
+    isShootHeld, 
+    triggerMobileShoot,
+    shotCooldownInfo,
+    notifyShotFired,
+  } = useControlsContext();
 
-  // Collision debug visibility toggle (press 'C' key)
+  // Collision debug visibility (default ON so it's visible on mobile too)
   const [showCollisionDebug, setShowCollisionDebug] = useState(false);
 
   // Play level music on mount
@@ -171,7 +180,6 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
 
   // Handle player being hit by enemy bullet
   const handlePlayerHit = useCallback(() => {
-    console.log("Player hit by enemy bullet!");
     // Lose a life
     gameState.loseLife();
     // Trigger player death animation
@@ -198,52 +206,85 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   const PLAYER_RADIUS = TILE_SIZE / 2;
   const ENEMY_RADIUS = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2;
 
+  // Important: DO NOT move the collision/world coordinates.
+  // Setting this to 0 means the game world is rendered using the
+  // original coordinate system (no global vertical shift).
+  const verticalOffset = 0;
+
+  // For desktop, horizontally center the scaled game world within the
+  // full-screen Stage without changing any in-world coordinates.
+  const worldWidth = GAME_WIDTH * scale;
+  const horizontalOffset = isMobile() ? 0 : (width - worldWidth) / 2;
+
   return (
-    <>
+    <div
+      style={{
+        position: 'relative',
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        // On mobile, keep the original "bottom HUD + controls" layout.
+        // On desktop, center the game canvas vertically.
+        justifyContent: isMobile() ? 'flex-end' : 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+      }}
+    >
       <HUD showDebugInfo={false} />
-      <CollisionInfo 
+      <CollisionInfo
         isVisible={showCollisionDebug}
         playerRadius={PLAYER_RADIUS}
         enemyRadius={ENEMY_RADIUS}
       />
       <Stage width={width} height={height} onPointerDown={handleStageClick}>
-        <Container scale={scale}>
-          <Level />
-          <CollisionDebug />
-          <BulletManager 
-            ref={bulletManagerRef} 
+        {/* Full-screen plane mesh background */}
+        <PlaneBackground width={width} height={height} />
+        <Container scale={scale} x={horizontalOffset} y={verticalOffset}>
+          <CollisionDebug isVisible={showCollisionDebug} />
+          <BulletManager
+            ref={bulletManagerRef}
             enemyPositionsRef={enemyPositionsRef}
             onEnemyHit={triggerEnemyExplosion}
-            maxBullets={1} // Space Invaders style: only 1 bullet on screen
+            maxBullets={3}
           />
           {/* <HeroMouse onClickMove={onClickMove} /> */}
-          <PlayerAnimated 
-            bulletManagerRef={bulletManagerRef} 
-            gunType="spaceInvaders"
+          <PlayerAnimated
+            bulletManagerRef={bulletManagerRef}
+            gunType="instantShot"
             getControlsDirection={getControlsDirection}
             consumeShootPress={consumeShootPress}
             isShootHeld={isShootHeld}
             positionRef={playerPositionRef}
             playerRef={playerRef}
+            notifyShotFired={notifyShotFired}
           />
           {/* Enemies in Space Invaders formation (all move together) */}
-          <EnemyFormation 
+          <EnemyFormation
             enemies={enemies}
             onEnemyRemove={removeEnemy}
             playerPositionRef={playerPositionRef}
             onPlayerHit={handlePlayerHit}
           />
           {/* Entity collision boundaries visualization */}
-          <EntityCollisionDebug 
+          <EntityCollisionDebug
             isVisible={showCollisionDebug}
             playerPositionRef={playerPositionRef}
             enemies={enemies}
           />
         </Container>
       </Stage>
-      <MobileJoystick onDirectionChange={setJoystickDirection} onRunChange={setJoystickRun} />
-      <MobileShootButton onShoot={triggerMobileShoot} />
-    </>
+      {/* Mobile-only movement and shoot controls. Desktop uses keyboard controls. */}
+      {isMobile() && (
+        <>
+          <MobileTwoButtonController
+            onDirectionChange={setJoystickDirection}
+            onRunChange={setJoystickRun}
+          />
+          <MobileShootButton onShoot={triggerMobileShoot} shotCooldownInfo={shotCooldownInfo} />
+        </>
+      )}
+    </div>
   );
 };
 

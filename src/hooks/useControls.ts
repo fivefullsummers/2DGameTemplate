@@ -20,6 +20,7 @@ export const useControls = () => {
   const [shootPressed, setShootPressed] = useState(false) // Track shoot key press events
   const [mobileDirection, setMobileDirection] = useState<Direction | null>(null) // Track mobile joystick input
   const [mobileRun, setMobileRun] = useState(false) // Track mobile joystick run state
+  const [shotCooldownInfo, setShotCooldownInfo] = useState<{ lastShotTime: number; fireRate: number } | null>(null)
 
   const handleKey = useCallback((e: KeyboardEvent, isKeyDown: boolean) => {
     const direction = DIRECTION_KEYS[e.code]
@@ -128,5 +129,18 @@ export const useControls = () => {
     return heldActions.includes('SHOOT')
   }, [heldActions])
 
-  return { getControlsDirection, consumeShootPress, isShootHeld, setJoystickDirection, setJoystickRun, triggerMobileShoot }
+  const notifyShotFired = useCallback((fireRate: number) => {
+    setShotCooldownInfo({ lastShotTime: Date.now(), fireRate })
+  }, [])
+
+  return { 
+    getControlsDirection, 
+    consumeShootPress, 
+    isShootHeld, 
+    setJoystickDirection, 
+    setJoystickRun, 
+    triggerMobileShoot,
+    shotCooldownInfo,
+    notifyShotFired,
+  }
 }

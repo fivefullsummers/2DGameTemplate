@@ -421,9 +421,10 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
         }
       });
 
-      // Sync imperative bullet sprites (re-add to container if React reconciliation removed them)
+      // Sync imperative bullet sprites (skip bullets we just removed this tick — state is still stale)
       if (bulletTexture) {
         enemyBullets.forEach((bullet) => {
+          if (idsToRemove.has(bullet.id)) return;
           const pos = bulletPositionsRef.current.get(bullet.id) ?? { x: bullet.x, y: bullet.y };
           let sprite = bulletSpriteMapRef.current.get(bullet.id);
           if (!sprite) {

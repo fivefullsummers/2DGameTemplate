@@ -105,6 +105,16 @@ export class GameState {
   }
 
   /**
+   * Reset the current wave (used for "replay level" without changing wave,
+   * score, or lives).
+   */
+  public resetCurrentWave(totalEnemies: number): void {
+    this.enemiesRemaining = totalEnemies;
+    this.totalEnemies = totalEnemies;
+    this.notifyStateChange();
+  }
+
+  /**
    * Add points to score
    */
   public addScore(points: number): void {

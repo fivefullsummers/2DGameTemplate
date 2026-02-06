@@ -23,9 +23,10 @@ import MobileControlsBar from "./MobileControlsBar";
 
 interface ExperienceContentProps {
   onGameOver: () => void;
+  onLevelComplete: () => void;
 }
 
-const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
+const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentProps) => {
   const { width, height, scale } = useDimensions();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
   const bulletManagerRef = useRef<BulletManagerRef>(null);
@@ -87,11 +88,8 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   }, []);
 
   const [enemies, setEnemies] = useState<EnemyData[]>(initialEnemies);
-
-  // Initialize game state on mount
-  useEffect(() => {
-    gameState.initGame(initialEnemies.length);
-  }, [initialEnemies.length]);
+  const [hasWaveCompleted, setHasWaveCompleted] = useState(false);
+  const [isPlayerExiting, setIsPlayerExiting] = useState(false);
 
   // Check for game over state
   useEffect(() => {
@@ -172,6 +170,25 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
       enemiesRemovedRef.current = [];
     }
   }, [enemies, initialEnemies]);
+
+  // Detect wave completion and start player exit animation
+  useEffect(() => {
+    if (!hasWaveCompleted && enemies.length === 0) {
+      setHasWaveCompleted(true);
+      setIsPlayerExiting(true);
+
+      // Stop level music when wave is cleared
+      const levelMusic = sound.find("level1-music");
+      if (levelMusic) {
+        levelMusic.stop();
+      }
+    }
+  }, [enemies.length, hasWaveCompleted]);
+
+  const handlePlayerExitComplete = useCallback(() => {
+    setIsPlayerExiting(false);
+    onLevelComplete();
+  }, [onLevelComplete]);
 
   // Vertical offset for rendering the entire game world (PIXI Container).
   // This does NOT change collision/world coordinates; it only shifts where
@@ -305,6 +322,8 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
             positionRef={playerPositionRef}
             playerRef={playerRef}
             notifyShotFired={notifyShotFired}
+            isExiting={isPlayerExiting}
+            onExitComplete={handlePlayerExitComplete}
           />
           {/* Enemies in Space Invaders formation (all move together) */}
           <EnemyFormation
@@ -337,12 +356,13 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
 
 interface ExperienceProps {
   onGameOver: () => void;
+  onLevelComplete: () => void;
 }
 
-const Experience = ({ onGameOver }: ExperienceProps) => {
+const Experience = ({ onGameOver, onLevelComplete }: ExperienceProps) => {
   return (
     <ControlsProvider>
-      <ExperienceContent onGameOver={onGameOver} />
+      <ExperienceContent onGameOver={onGameOver} onLevelComplete={onLevelComplete} />
     </ControlsProvider>
   );
 };

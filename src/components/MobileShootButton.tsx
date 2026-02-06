@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import gunImage from '../assets/hero/gun_image.png';
+import {
+  MOBILE_SHOOT_BUTTON_BOTTOM,
+  MOBILE_SHOOT_BUTTON_SIZE,
+} from '../consts/mobile-controls-config';
 
 interface MobileShootButtonProps {
   onShoot: () => void;
@@ -39,6 +43,34 @@ const MobileShootButton = ({ onShoot, shotCooldownInfo }: MobileShootButtonProps
     );
   }, [shotCooldownInfo]);
 
+  // Debug logging: shoot button position vs screen on mobile.
+  useEffect(() => {
+    const logLayout = () => {
+      if (typeof window === 'undefined') return;
+      if (!buttonRef.current) return;
+
+      const rect = buttonRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const windowWidth = window.innerWidth;
+
+      // eslint-disable-next-line no-console
+      console.log('[layout] MobileShootButton', {
+        windowHeight,
+        windowWidth,
+        rectTop: rect.top,
+        rectBottom: rect.bottom,
+        rectHeight: rect.height,
+        distanceFromBottom: windowHeight - rect.top,
+        MOBILE_SHOOT_BUTTON_BOTTOM,
+        MOBILE_SHOOT_BUTTON_SIZE,
+      });
+    };
+
+    logLayout();
+    window.addEventListener('resize', logLayout);
+    return () => window.removeEventListener('resize', logLayout);
+  }, []);
+
   const handleStart = (e: React.TouchEvent | React.MouseEvent) => {
     e.preventDefault();
     setIsPressed(true);
@@ -58,11 +90,11 @@ const MobileShootButton = ({ onShoot, shotCooldownInfo }: MobileShootButtonProps
       onMouseUp={handleEnd}
       onMouseLeave={handleEnd}
       style={{
-        position: 'fixed',
-        bottom: '30px',
+        position: 'absolute',
+        bottom: `${MOBILE_SHOOT_BUTTON_BOTTOM}px`,
         right: '30px',
-        width: '60px',
-        height: '60px',
+        width: `${MOBILE_SHOOT_BUTTON_SIZE}px`,
+        height: `${MOBILE_SHOOT_BUTTON_SIZE}px`,
         borderRadius: '50%',
         border: '3px solid rgba(255, 255, 255, 0.7)',
         display: 'flex',

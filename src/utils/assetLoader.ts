@@ -2,20 +2,8 @@ import * as PIXI from "pixi.js";
 import { sound } from "@pixi/sound";
 
 // Import all assets
-import heroWalkAsset from "../assets/hero/walk.png";
-import heroRunAsset from "../assets/hero/run.png";
-import heroIdleAsset from "../assets/hero/idle.png";
-import heroShootAsset from "../assets/hero/shoot.png";
 import heroCoolAsset from "../assets/hero/cool.png";
 import heroExplosionAsset from "../assets/hero/cool_explosion.png";
-import enemyWalkAsset from "../assets/enemies/walk.png";
-import enemyRunAsset from "../assets/enemies/run.png";
-import enemyIdleAsset from "../assets/enemies/idle.png";
-import enemyRed1Asset from "../assets/enemies/enemyRed1.png";
-import enemyRed2Asset from "../assets/enemies/enemyRed2.png";
-import enemyRed3Asset from "../assets/enemies/enemyRed3.png";
-import enemyRed4Asset from "../assets/enemies/enemyRed4.png";
-import enemyRed5Asset from "../assets/enemies/enemyRed5.png";
 import enemyAnimatedAsset from "../assets/enemies/enemy.png";
 import enemyExplosionAsset from "../assets/enemies/enemy_explosion.png";
 import mapAsset from "../assets/back.png";
@@ -36,26 +24,6 @@ export interface AssetDefinition {
 
 export const ASSET_MANIFEST: AssetDefinition[] = [
   {
-    alias: "hero-walk",
-    src: heroWalkAsset,
-    description: "Hero walking animation",
-  },
-  {
-    alias: "hero-run",
-    src: heroRunAsset,
-    description: "Hero running animation",
-  },
-  {
-    alias: "hero-idle",
-    src: heroIdleAsset,
-    description: "Hero idle animation",
-  },
-  {
-    alias: "hero-shoot",
-    src: heroShootAsset,
-    description: "Hero shooting animation",
-  },
-  {
     alias: "hero-cool",
     src: heroCoolAsset,
     description: "Hero cool sprite",
@@ -64,46 +32,6 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     alias: "hero-explosion",
     src: heroExplosionAsset,
     description: "Hero death explosion animation",
-  },
-  {
-    alias: "enemy-walk",
-    src: enemyWalkAsset,
-    description: "Enemy walking animation",
-  },
-  {
-    alias: "enemy-run",
-    src: enemyRunAsset,
-    description: "Enemy running animation",
-  },
-  {
-    alias: "enemy-idle",
-    src: enemyIdleAsset,
-    description: "Enemy idle animation",
-  },
-  {
-    alias: "enemy-red-1",
-    src: enemyRed1Asset,
-    description: "Enemy red sprite 1",
-  },
-  {
-    alias: "enemy-red-2",
-    src: enemyRed2Asset,
-    description: "Enemy red sprite 2",
-  },
-  {
-    alias: "enemy-red-3",
-    src: enemyRed3Asset,
-    description: "Enemy red sprite 3",
-  },
-  {
-    alias: "enemy-red-4",
-    src: enemyRed4Asset,
-    description: "Enemy red sprite 4",
-  },
-  {
-    alias: "enemy-red-5",
-    src: enemyRed5Asset,
-    description: "Enemy red sprite 5",
   },
   {
     alias: "enemy-animated",

@@ -2,12 +2,13 @@ import { Sprite, useTick } from "@pixi/react";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import * as PIXI from "pixi.js";
 import { sound } from "@pixi/sound";
-import { TILE_SIZE, COLS } from "../consts/game-world";
+import { TILE_SIZE, COLS, GAME_HEIGHT, isMobile } from "../consts/game-world";
 import { isBlocked } from "../consts/collision-map";
 import { BulletManagerRef } from "./BulletManager";
 import { GUN_TYPES, DEFAULT_GUN_TYPE } from "../consts/bullet-config";
 import { Direction, IPosition } from "../types/common";
 import { PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
+import { calculateDimensions } from "../helpers/common";
 
 // Sprite sheet configuration for cool.png
 // cool.png is 1536 width with 3 sprites horizontally
@@ -108,7 +109,7 @@ const PlayerAnimated = ({
       positionRef.current = position;
     }
   }, [position, positionRef]);
-  
+
   const [currentFrame, setCurrentFrame] = useState(0);
   const [currentRow] = useState(ANIMATIONS.IDLE);
   const [currentSheetName, setCurrentSheetName] = useState<string>("idle");

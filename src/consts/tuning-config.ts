@@ -14,7 +14,7 @@
 // To make desktop look different from mobile, change ONLY the
 // values in the `desktop` section below.
 
-import { TILE_SIZE, isMobile } from "./game-world";
+import { TILE_SIZE, isMobile, GAME_HEIGHT } from "./game-world";
 
 type DeviceProfile = "mobile" | "desktop";
 
@@ -26,11 +26,15 @@ const DEVICE_TUNING = {
     enemyScale: 0.1,
     enemySpacingX: TILE_SIZE * 1.7,
     enemySpacingY: TILE_SIZE * 1.5,
-    enemyFormationOffsetY: TILE_SIZE * 3,
+    // Raise the enemy formation even closer to the top edge on mobile.
+    // Smaller / more negative value = closer to (or slightly above) the top.
+    enemyFormationOffsetY: -TILE_SIZE * 3,
 
     // Player
     playerScale: 0.23,
-    playerStartY: TILE_SIZE * 23,
+    // Spawn close to the very bottom of the in-world playfield while
+    // remaining inside the collision-safe bounds.
+    playerStartY: GAME_HEIGHT - TILE_SIZE,
   },
   desktop: {
     // Enemies

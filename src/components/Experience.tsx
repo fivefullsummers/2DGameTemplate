@@ -13,14 +13,13 @@ import HUD from "./HUD";
 import { PointerEvent, useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { IPosition } from "../types/common";
 import { ControlsProvider } from "../contexts/ControlsContext";
-import MobileTwoButtonController from "./MobileTwoButtonController";
-import MobileShootButton from "./MobileShootButton";
 import { useControlsContext } from "../contexts/ControlsContext";
 import { sound } from "@pixi/sound";
 import { getEnemyPositions } from "../consts/enemies-map";
 import { gameState } from "../utils/GameState";
-import { ENEMY_SCALE } from "../consts/tuning-config";
+import { ENEMY_SCALE, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 import PlaneBackground from "./PlaneBackground";
+import MobileControlsBar from "./MobileControlsBar";
 
 interface ExperienceContentProps {
   onGameOver: () => void;
@@ -32,14 +31,10 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   const bulletManagerRef = useRef<BulletManagerRef>(null);
   const playerPositionRef = useRef<IPosition>({ x: 0, y: 0 });
   const playerRef = useRef<PlayerRef | null>(null);
-  const { 
-    setJoystickDirection, 
-    setJoystickRun, 
-    getControlsDirection, 
-    consumeShootPress, 
-    isShootHeld, 
-    triggerMobileShoot,
-    shotCooldownInfo,
+  const {
+    getControlsDirection,
+    consumeShootPress,
+    isShootHeld,
     notifyShotFired,
   } = useControlsContext();
 
@@ -64,9 +59,9 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   const handleStageClick = (event: PointerEvent) => {
     onClickMove.current?.({
       x: event.nativeEvent.offsetX / scale - TILE_SIZE / 2,
-      y: event.nativeEvent.offsetY / scale - TILE_SIZE / 2
-    })
-  }
+      y: event.nativeEvent.offsetY / scale - TILE_SIZE / 2,
+    });
+  };
 
   // Enemy tracking with unique IDs and position refs
   interface EnemyData {
@@ -178,6 +173,61 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
     }
   }, [enemies, initialEnemies]);
 
+  // Vertical offset for rendering the entire game world (PIXI Container).
+  // This does NOT change collision/world coordinates; it only shifts where
+  // the world appears on screen.
+  const [verticalOffset, setVerticalOffset] = useState(0);
+
+  // Compute a vertical offset so that the player's ship sits within
+  // ~50px of the top of the mobile controls bar.
+  useEffect(() => {
+    if (!isMobile()) {
+      setVerticalOffset(0);
+      return;
+    }
+
+    const TARGET_GAP = 50; // px between player bottom and controls top
+
+    const recomputeOffset = () => {
+      if (typeof window === "undefined") return;
+
+      const controlsBar = document.getElementById("mobile-controls-bar");
+      if (!controlsBar) return;
+
+      const rect = controlsBar.getBoundingClientRect();
+      const controlsTop = rect.top;
+
+      // Player center Y in world space and approximate half-height of
+      // the sprite in screen pixels.
+      const playerCenterWorldY = PLAYER_START_Y;
+      const playerHalfHeightScreen = (TILE_SIZE * PLAYER_SCALE * scale) / 2;
+      const playerCenterScreenNoOffset = playerCenterWorldY * scale;
+      const playerBottomScreenNoOffset =
+        playerCenterScreenNoOffset + playerHalfHeightScreen;
+
+      // Solve for verticalOffset so that:
+      //   controlsTop - (playerBottomScreenNoOffset + verticalOffset) = TARGET_GAP
+      const newOffset = controlsTop - TARGET_GAP - playerBottomScreenNoOffset;
+
+      setVerticalOffset(newOffset);
+
+      // eslint-disable-next-line no-console
+      console.log("[layout] verticalOffset computed", {
+        controlsTop,
+        playerCenterWorldY,
+        playerBottomScreenNoOffset,
+        TARGET_GAP,
+        verticalOffset: newOffset,
+      });
+    };
+
+    // Run once after mount/layout
+    recomputeOffset();
+
+    window.addEventListener("resize", recomputeOffset);
+    return () => window.removeEventListener("resize", recomputeOffset);
+  }, [scale]);
+
   // Handle player being hit by enemy bullet
   const handlePlayerHit = useCallback(() => {
     // Lose a life
@@ -206,27 +256,58 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   const PLAYER_RADIUS = TILE_SIZE / 2;
   const ENEMY_RADIUS = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2;
 
-  // Important: DO NOT move the collision/world coordinates.
-  // Setting this to 0 means the game world is rendered using the
-  // original coordinate system (no global vertical shift).
-  const verticalOffset = 0;
-
   // For desktop, horizontally center the scaled game world within the
   // full-screen Stage without changing any in-world coordinates.
   const worldWidth = GAME_WIDTH * scale;
   const horizontalOffset = isMobile() ? 0 : (width - worldWidth) / 2;
 
+  // Reserve vertical space for the mobile controls bar at the bottom of
+  // the screen so that the PIXI Stage does not cover the full viewport
+  // height (which would push the controls off-screen).
+  // On mobile we want roughly a 100px tall controls area.
+  const mobileControlsHeight = isMobile() ? 100 : 0;
+  const stageHeight = height - mobileControlsHeight;
+
+  // Debug logging: enemy formation vs top and vs player on mobile.
+  useEffect(() => {
+    if (!isMobile()) return;
+    if (enemies.length === 0) return;
+
+    // Use the current enemy refs for most up-to-date world Y positions.
+    const enemyWorldYs = enemies.map((enemy) => enemy.positionRef.current.y);
+    const topEnemyWorldY = Math.min(...enemyWorldYs);
+
+    const playerWorldY = playerPositionRef.current.y;
+
+    const topEnemyScreenY = verticalOffset + topEnemyWorldY * scale;
+    const playerScreenY = verticalOffset + playerWorldY * scale;
+
+    const distanceEnemyToTopScreen = topEnemyScreenY; // from top of game area
+    const distancePlayerToEnemyScreen = playerScreenY - topEnemyScreenY;
+
+    // eslint-disable-next-line no-console
+    console.log("[layout] Enemies", {
+      topEnemyWorldY,
+      playerWorldY,
+      topEnemyScreenY,
+      playerScreenY,
+      distanceEnemyToTopScreen,
+      distancePlayerToEnemyScreen,
+      scale,
+      verticalOffset,
+    });
+  }, [enemies, scale, verticalOffset]);
+
   return (
     <div
+      data-vertical-offset={verticalOffset}
       style={{
         position: 'relative',
         width: '100vw',
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        // On mobile, keep the original "bottom HUD + controls" layout.
-        // On desktop, center the game canvas vertically.
-        justifyContent: isMobile() ? 'flex-end' : 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
         overflow: 'hidden',
       }}
@@ -237,7 +318,7 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
         playerRadius={PLAYER_RADIUS}
         enemyRadius={ENEMY_RADIUS}
       />
-      <Stage width={width} height={height} onPointerDown={handleStageClick}>
+      <Stage width={width} height={stageHeight} onPointerDown={handleStageClick}>
         {/* Full-screen plane mesh background */}
         <PlaneBackground width={width} height={height} />
         <Container scale={scale} x={horizontalOffset} y={verticalOffset}>
@@ -274,16 +355,16 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
           />
         </Container>
       </Stage>
-      {/* Mobile-only movement and shoot controls. Desktop uses keyboard controls. */}
-      {isMobile() && (
-        <>
-          <MobileTwoButtonController
-            onDirectionChange={setJoystickDirection}
-            onRunChange={setJoystickRun}
-          />
-          <MobileShootButton onShoot={triggerMobileShoot} shotCooldownInfo={shotCooldownInfo} />
-        </>
-      )}
+      {/* Mobile-only movement and shoot controls in a separate bottom bar. */}
+      <div
+        style={{
+          marginTop: 'auto',
+          width: '100%',
+          height: mobileControlsHeight,
+        }}
+      >
+        <MobileControlsBar />
+      </div>
     </div>
   );
 };

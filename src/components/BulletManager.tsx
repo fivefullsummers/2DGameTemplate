@@ -1,9 +1,17 @@
-import { Container } from "@pixi/react";
+import { Container, useTick } from "@pixi/react";
 import { useState, useCallback, forwardRef, useImperativeHandle, RefObject } from "react";
 import { sound } from "@pixi/sound";
 import Bullet from "./Bullet";
 import { BULLET_TYPES, BulletConfig } from "../consts/bullet-config";
 import { IPosition } from "../types/common";
+import {
+  COLLISION_MAP,
+  COLLISION_SUB_TILE_SIZE,
+  COLLISION_ROWS,
+  COLLISION_COLS,
+} from "../consts/collision-map";
+import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
+import { ENEMY_SCALE } from "../consts/tuning-config";
 
 interface BulletData {
   id: string;
@@ -11,6 +19,7 @@ interface BulletData {
   y: number;
   direction: "UP" | "DOWN" | "LEFT" | "RIGHT";
   config: BulletConfig;
+  createdAt: number;
 }
 
 export interface BulletManagerRef {
@@ -25,79 +34,126 @@ export interface BulletManagerRef {
 interface BulletManagerProps {
   enemyPositionsRef?: RefObject<Map<string, IPosition>>;
   onEnemyHit?: (enemyId: string) => void;
-  maxBullets?: number; // Space Invaders style: limit bullets on screen (default: unlimited)
+  maxBullets?: number;
 }
 
 const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
   ({ enemyPositionsRef, onEnemyHit, maxBullets }, ref) => {
-  const [bullets, setBullets] = useState<BulletData[]>([]);
+    const [bullets, setBullets] = useState<BulletData[]>([]);
 
-  // Spawn a new bullet
-  const spawnBullet = useCallback(
-    (
-      x: number,
-      y: number,
-      direction: "UP" | "DOWN" | "LEFT" | "RIGHT",
-      bulletType: string = "basic"
-    ) => {
-      // Check bullet limit (Space Invaders allows only 1 bullet)
-      if (maxBullets !== undefined && bullets.length >= maxBullets) {
-        return; // Don't spawn if at max (no sound)
+    const spawnBullet = useCallback(
+      (
+        x: number,
+        y: number,
+        direction: "UP" | "DOWN" | "LEFT" | "RIGHT",
+        bulletType: string = "basic"
+      ) => {
+        setBullets((prev) => {
+          if (maxBullets !== undefined && prev.length >= maxBullets) return prev;
+          const config = BULLET_TYPES[bulletType];
+          if (!config) return prev;
+          const newBullet: BulletData = {
+            id: `bullet-${Date.now()}-${Math.random()}`,
+            x,
+            y,
+            direction,
+            config,
+            createdAt: Date.now(),
+          };
+          const poundSfx = sound.find("pound-sound");
+          if (poundSfx) poundSfx.play({ volume: 0.5 });
+          return [...prev, newBullet];
+        });
+      },
+      [maxBullets]
+    );
+
+    useImperativeHandle(ref, () => ({ spawnBullet }), [spawnBullet]);
+
+    // Single tick: update all bullet positions, collision, lifetime; one setState per frame
+    useTick((delta) => {
+      if (bullets.length === 0) return;
+
+      const enemyPositions = enemyPositionsRef?.current;
+      const nextBullets: BulletData[] = [];
+
+      for (const bullet of bullets) {
+        if (bullet.config.lifetime > 0) {
+          const age = Date.now() - bullet.createdAt;
+          if (age >= bullet.config.lifetime) continue;
+        }
+
+        let newX = bullet.x;
+        let newY = bullet.y;
+        switch (bullet.direction) {
+          case "UP":
+            newY -= bullet.config.speed * delta;
+            break;
+          case "DOWN":
+            newY += bullet.config.speed * delta;
+            break;
+          case "LEFT":
+            newX -= bullet.config.speed * delta;
+            break;
+          case "RIGHT":
+            newX += bullet.config.speed * delta;
+            break;
+        }
+
+        const offScreenTop = newY < -TILE_SIZE;
+        const offScreenBottom = newY > COLLISION_ROWS * COLLISION_SUB_TILE_SIZE;
+        const offScreenLeft = newX < -TILE_SIZE;
+        const offScreenRight = newX > COLLISION_COLS * COLLISION_SUB_TILE_SIZE;
+        if (offScreenTop || offScreenBottom || offScreenLeft || offScreenRight) continue;
+
+        const bulletCol = Math.floor((newX + TILE_SIZE) / COLLISION_SUB_TILE_SIZE);
+        const bulletRow = Math.floor((newY + TILE_SIZE) / COLLISION_SUB_TILE_SIZE);
+        const isInPlayableArea =
+          bulletRow >= 2 &&
+          bulletRow < COLLISION_ROWS - 2 &&
+          bulletCol >= 2 &&
+          bulletCol < COLLISION_COLS - 2;
+        if (isInPlayableArea && COLLISION_MAP[bulletRow][bulletCol] === 1) continue;
+
+        let hitEnemy = false;
+        if (enemyPositions && onEnemyHit) {
+          const bulletRadius = (bullet.config.frameWidth * bullet.config.scale) / 2;
+          const enemyRadius = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2;
+          for (const [enemyId, enemyPos] of enemyPositions.entries()) {
+            const dx = newX - enemyPos.x;
+            const dy = newY - enemyPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < bulletRadius + enemyRadius) {
+              onEnemyHit(enemyId);
+              hitEnemy = true;
+              break;
+            }
+          }
+        }
+        if (hitEnemy) continue;
+
+        nextBullets.push({ ...bullet, x: newX, y: newY });
       }
 
-      const config = BULLET_TYPES[bulletType];
-      if (!config) {
-        console.warn(`Unknown bullet type: ${bulletType}`);
-        return; // No bullet, so no sound
-      }
+      setBullets(nextBullets);
+    });
 
-      const newBullet: BulletData = {
-        id: `bullet-${Date.now()}-${Math.random()}`,
-        x,
-        y,
-        direction,
-        config,
-      };
-
-      setBullets((prev) => [...prev, newBullet]);
-
-      // Play shooting sound ONLY when a bullet was actually spawned.
-      const poundSfx = sound.find("pound-sound");
-      if (poundSfx) {
-        poundSfx.play({ volume: 0.5 });
-      }
-    },
-    [maxBullets, bullets.length]
-  );
-
-  // Remove a bullet by ID
-  const destroyBullet = useCallback((id: string) => {
-    setBullets((prev) => prev.filter((bullet) => bullet.id !== id));
-  }, []);
-
-  // Expose methods to parent via ref
-  useImperativeHandle(ref, () => ({
-    spawnBullet,
-  }));
-
-  return (
-    <Container>
-      {bullets.map((bullet) => (
-        <Bullet
-          key={bullet.id}
-          id={bullet.id}
-          startX={bullet.x}
-          startY={bullet.y}
-          direction={bullet.direction}
-          config={bullet.config}
-          onDestroy={destroyBullet}
-          enemyPositionsRef={enemyPositionsRef}
-          onEnemyHit={onEnemyHit}
-        />
-      ))}
-    </Container>
-  );
-});
+    return (
+      <Container>
+        {bullets.map((bullet) => (
+          <Bullet
+            key={bullet.id}
+            id={bullet.id}
+            x={bullet.x}
+            y={bullet.y}
+            direction={bullet.direction}
+            config={bullet.config}
+          />
+        ))}
+      </Container>
+    );
+  }
+);
 
 BulletManager.displayName = "BulletManager";
 

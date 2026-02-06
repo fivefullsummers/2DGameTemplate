@@ -1,13 +1,16 @@
-import { Container, useTick, Sprite } from "@pixi/react";
+import { Container, useTick } from "@pixi/react";
 import { useState, useCallback, useRef, useMemo } from "react";
 import * as PIXI from "pixi.js";
 import { ENEMY_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 import { TILE_SIZE, COLS } from "../consts/game-world";
 import { IPosition } from "../types/common";
-import EnemyBullet from "./EnemyBullet";
 import { textureCache } from "../utils/textureCache";
 import enemyAnimatedAsset from "../assets/enemies/enemy.png";
 import { gameState } from "../utils/GameState";
+
+const ENEMY_BULLET_SCALE = 0.05;
+const ENEMY_BULLET_TINT = 0xff0000;
+const PLAYER_RADIUS = TILE_SIZE / 2;
 
 // Enemy animation configuration
 // Frame sequence: 0 -> 1 -> 2 -> 1 -> 0 (5-step cycle)
@@ -46,11 +49,17 @@ interface EnemyBulletData {
 
 const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit }: EnemyFormationProps) => {
   const [direction, setDirection] = useState<1 | -1>(1); // 1 = right, -1 = left
-  const [, forceUpdate] = useState(0); // Force re-render when enemies move
   const [enemyBullets, setEnemyBullets] = useState<EnemyBulletData[]>([]);
   const lastMoveTime = useRef<number>(Date.now());
   const lastShootTime = useRef<number>(Date.now());
   const initialEnemyCount = useRef<number>(enemies.length);
+
+  // Imperative sprite management (no per-frame React re-renders)
+  const containerRef = useRef<PIXI.Container>(null);
+  const enemySpriteMapRef = useRef<Map<string, PIXI.Sprite>>(new Map());
+  const bulletSpriteMapRef = useRef<Map<string, PIXI.Sprite>>(new Map());
+  const bulletPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const explosionSpriteMapRef = useRef<Map<string, PIXI.Sprite>>(new Map());
 
   // Initialize animation state for each enemy
   const enemyAnimState = useRef<Map<string, { frameIndex: number; lastX: number }>>(new Map());
@@ -174,13 +183,9 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
       y: shooter.positionRef.current.y + TILE_SIZE / 2, // Start below enemy
     };
 
+    bulletPositionsRef.current.set(newBullet.id, { x: newBullet.x, y: newBullet.y });
     setEnemyBullets((prev) => [...prev, newBullet]);
   }, [enemyBullets.length, getBottommostEnemies]);
-
-  // Destroy enemy bullet
-  const destroyEnemyBullet = useCallback((bulletId: string) => {
-    setEnemyBullets((prev) => prev.filter((bullet) => bullet.id !== bulletId));
-  }, []);
 
   // Check if any enemy would hit the boundary
   const checkBoundary = useCallback(() => {
@@ -201,112 +206,247 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
     return { hitLeft, hitRight };
   }, [enemies]);
 
-  // Move all enemies together (Space Invaders style) and handle shooting
+  // Move all enemies together (Space Invaders style), update bullets, sync imperative sprites
   useTick((delta) => {
-    if (enemies.length === 0) return;
+    const container = containerRef.current;
+    const bulletTexture = enemyBulletTextureRef.current;
+
+    if (enemies.length === 0) {
+      if (container) {
+        enemySpriteMapRef.current.forEach((sprite) => {
+          container.removeChild(sprite);
+          sprite.destroy();
+        });
+        enemySpriteMapRef.current.clear();
+        bulletSpriteMapRef.current.forEach((sprite) => {
+          container.removeChild(sprite);
+          sprite.destroy();
+        });
+        bulletSpriteMapRef.current.clear();
+        bulletPositionsRef.current.clear();
+      }
+      return;
+    }
 
     const now = Date.now();
-    
-    // Handle explosion animations
+
+    // Handle explosion animations (separate explosion sprites)
     enemies.forEach((enemy) => {
-      if (enemy.isExploding) {
-        const expState = explosionState.current.get(enemy.id);
-        if (expState) {
-          // Advance frame accumulator
-          expState.frameAccumulator += EXPLOSION_SPEED * delta;
-          
-          if (expState.frameAccumulator >= 1) {
-            expState.frameAccumulator = 0;
-            expState.frameIndex += 1;
-            
-            // Check if explosion animation is complete
-            if (expState.frameIndex >= EXPLOSION_FRAME_SEQUENCE.length) {
-              // Remove enemy after explosion completes
-              onEnemyRemove(enemy.id);
-              explosionState.current.delete(enemy.id);
+      if (!enemy.isExploding) return;
+
+      const expState = explosionState.current.get(enemy.id);
+      if (expState) {
+        // Advance explosion animation
+        expState.frameAccumulator += EXPLOSION_SPEED * delta;
+        if (expState.frameAccumulator >= 1) {
+          expState.frameAccumulator = 0;
+          expState.frameIndex += 1;
+
+          // Explosion finished: clean up sprite and enemy
+          if (expState.frameIndex >= EXPLOSION_FRAME_SEQUENCE.length) {
+            const expSprite = explosionSpriteMapRef.current.get(enemy.id);
+            if (expSprite && container) {
+              container.removeChild(expSprite);
+              expSprite.destroy();
+              explosionSpriteMapRef.current.delete(enemy.id);
             }
+            onEnemyRemove(enemy.id);
+            explosionState.current.delete(enemy.id);
+            return;
           }
         }
       }
-    });
-    
-    // Only move non-exploding enemies
-    const activeEnemies = enemies.filter((e) => !e.isExploding);
-    if (activeEnemies.length === 0) return;
 
-    // Ease display position toward logical position (same feel as player movement)
-    let displayUpdated = false;
-    activeEnemies.forEach((enemy) => {
-      let display = displayPositionsRef.current.get(enemy.id);
-      const target = enemy.positionRef.current;
-      if (!display) {
-        display = { x: target.x, y: target.y };
-        displayPositionsRef.current.set(enemy.id, display);
+      // Drive dedicated explosion sprite (not the main enemy sprite)
+      const base = explosionBaseTexture;
+      const frames = explosionFrameTextures;
+      if (base && frames.size > 0 && container) {
+        const state = explosionState.current.get(enemy.id);
+        if (!state) return;
+        const actualFrame = EXPLOSION_FRAME_SEQUENCE[state.frameIndex] ?? 0;
+        const texture =
+          frames.get(actualFrame) ??
+          base;
+
+        let expSprite = explosionSpriteMapRef.current.get(enemy.id);
+        if (!expSprite) {
+          expSprite = new PIXI.Sprite(texture);
+          expSprite.anchor.set(0.5);
+          expSprite.scale.set(ENEMY_SCALE);
+          explosionSpriteMapRef.current.set(enemy.id, expSprite);
+          container.addChild(expSprite);
+        }
+        expSprite.x = enemy.positionRef.current.x;
+        expSprite.y = enemy.positionRef.current.y;
+        expSprite.texture = texture;
       }
-      display.x += (target.x - display.x) * ACCELERATION_FACTOR;
-      display.y += (target.y - display.y) * ACCELERATION_FACTOR;
-      displayUpdated = true;
     });
+
+    const activeEnemies = enemies.filter((e) => !e.isExploding);
+    if (activeEnemies.length === 0) {
+      // Still sync display (exploding enemies) and bullets
+    } else {
+      // Ease display position toward logical position
+      activeEnemies.forEach((enemy) => {
+        let display = displayPositionsRef.current.get(enemy.id);
+        const target = enemy.positionRef.current;
+        if (!display) {
+          display = { x: target.x, y: target.y };
+          displayPositionsRef.current.set(enemy.id, display);
+        }
+        display.x += (target.x - display.x) * ACCELERATION_FACTOR;
+        display.y += (target.y - display.y) * ACCELERATION_FACTOR;
+      });
+
+      // Handle movement
+      const moveDelay = getMoveDelay();
+      if (now - lastMoveTime.current >= moveDelay) {
+        lastMoveTime.current = now;
+        const { hitLeft, hitRight } = checkBoundary();
+
+        if ((direction === 1 && hitRight) || (direction === -1 && hitLeft)) {
+          activeEnemies.forEach((enemy) => {
+            enemy.positionRef.current.y += VERTICAL_STEP;
+          });
+          const bottomMostY = activeEnemies.reduce(
+            (maxY, enemy) => Math.max(maxY, enemy.positionRef.current.y),
+            -Infinity
+          );
+          if (bottomMostY >= PLAYER_START_Y) {
+            gameState.triggerGameOver();
+            return;
+          }
+          setDirection((prev) => (prev === 1 ? -1 : 1));
+        } else {
+          activeEnemies.forEach((enemy) => {
+            enemy.positionRef.current.x += HORIZONTAL_STEP * direction;
+            const animState = enemyAnimState.current.get(enemy.id);
+            if (animState && Math.abs(enemy.positionRef.current.x - animState.lastX) >= HORIZONTAL_STEP) {
+              animState.frameIndex = (animState.frameIndex + 1) % FRAME_SEQUENCE.length;
+              animState.lastX = enemy.positionRef.current.x;
+            }
+          });
+        }
+      }
+    }
+
     // Clean up display positions for removed enemies
     displayPositionsRef.current.forEach((_, id) => {
       if (!enemies.some((e) => e.id === id)) {
         displayPositionsRef.current.delete(id);
       }
     });
-    if (displayUpdated) {
-      forceUpdate((prev) => prev + 1);
-    }
-    
-    // Handle movement
-    const moveDelay = getMoveDelay();
-    if (now - lastMoveTime.current >= moveDelay) {
-      lastMoveTime.current = now;
 
-      const { hitLeft, hitRight } = checkBoundary();
-
-      // Check if we need to reverse direction and move down
-      if ((direction === 1 && hitRight) || (direction === -1 && hitLeft)) {
-        // Move down and reverse direction
-        activeEnemies.forEach((enemy) => {
-          enemy.positionRef.current.y += VERTICAL_STEP;
-        });
-
-        // Space Invaders rule:
-        // If any enemy has moved to or past the player's line,
-        // the game is immediately over.
-        const bottomMostY = activeEnemies.reduce(
-          (maxY, enemy) => Math.max(maxY, enemy.positionRef.current.y),
-          -Infinity
-        );
-        if (bottomMostY >= PLAYER_START_Y) {
-          gameState.triggerGameOver();
-          return;
-        }
-
-        setDirection((prev) => (prev === 1 ? -1 : 1));
-        forceUpdate((prev) => prev + 1); // Trigger re-render
-      } else {
-        // Move horizontally
-        activeEnemies.forEach((enemy) => {
-          enemy.positionRef.current.x += HORIZONTAL_STEP * direction;
-          
-          // Update animation frame on x-axis movement
-          const animState = enemyAnimState.current.get(enemy.id);
-          if (animState && Math.abs(enemy.positionRef.current.x - animState.lastX) >= HORIZONTAL_STEP) {
-            // Advance to next frame in sequence
-            animState.frameIndex = (animState.frameIndex + 1) % FRAME_SEQUENCE.length;
-            animState.lastX = enemy.positionRef.current.x;
-          }
-        });
-        forceUpdate((prev) => prev + 1); // Trigger re-render
-      }
-    }
-
-    // Handle shooting (Space Invaders: random bottommost enemy shoots)
+    // Handle shooting
     const shootDelay = getShootDelay();
     if (now - lastShootTime.current >= shootDelay) {
       lastShootTime.current = now;
       spawnEnemyBullet();
+    }
+
+    // Update enemy bullet positions and check collision/off-screen
+    const bulletSpeed = getBulletSpeed();
+    const idsToRemove = new Set<string>();
+    let didHitPlayer = false;
+    const bulletRadius = bulletTexture?.baseTexture?.width
+      ? (bulletTexture.baseTexture.width * ENEMY_BULLET_SCALE) / 2
+      : 4;
+
+    enemyBullets.forEach((bullet) => {
+      const pos = bulletPositionsRef.current.get(bullet.id) ?? { x: bullet.x, y: bullet.y };
+      pos.y += bulletSpeed * delta;
+      bulletPositionsRef.current.set(bullet.id, pos);
+
+      if (pos.y > TILE_SIZE * 35) {
+        idsToRemove.add(bullet.id);
+      } else if (playerPositionRef?.current) {
+        const playerX = playerPositionRef.current.x;
+        const playerY = playerPositionRef.current.y;
+        const dx = pos.x - playerX;
+        const dy = pos.y - playerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < bulletRadius + PLAYER_RADIUS) {
+          idsToRemove.add(bullet.id);
+          didHitPlayer = true;
+        }
+      }
+    });
+
+    if (idsToRemove.size > 0) {
+      idsToRemove.forEach((id) => {
+        bulletPositionsRef.current.delete(id);
+        const sprite = bulletSpriteMapRef.current.get(id);
+        if (sprite && container) {
+          container.removeChild(sprite);
+          sprite.destroy();
+          bulletSpriteMapRef.current.delete(id);
+        }
+      });
+      if (didHitPlayer) onPlayerHit?.();
+      setEnemyBullets((prev) => prev.filter((b) => !idsToRemove.has(b.id)));
+    }
+
+    // Sync imperative enemy sprites (only live enemies; explosions use separate sprites)
+    if (container) {
+      enemies.forEach((enemy) => {
+        // If this enemy is exploding, its normal sprite should be gone
+        if (enemy.isExploding) {
+          const deadSprite = enemySpriteMapRef.current.get(enemy.id);
+          if (deadSprite) {
+            container.removeChild(deadSprite);
+            deadSprite.destroy();
+            enemySpriteMapRef.current.delete(enemy.id);
+          }
+          return;
+        }
+
+        const display = displayPositionsRef.current.get(enemy.id) ?? enemy.positionRef.current;
+        let sprite = enemySpriteMapRef.current.get(enemy.id);
+        if (!sprite) {
+          sprite = new PIXI.Sprite(getEnemyTexture(enemy.id));
+          sprite.anchor.set(0.5);
+          sprite.scale.set(ENEMY_SCALE);
+          enemySpriteMapRef.current.set(enemy.id, sprite);
+        }
+        sprite.x = display.x;
+        sprite.y = display.y;
+        sprite.texture = getEnemyTexture(enemy.id);
+        if (!sprite.parent) container.addChild(sprite);
+      });
+      enemySpriteMapRef.current.forEach((sprite, id) => {
+        if (!enemies.some((e) => e.id === id)) {
+          container.removeChild(sprite);
+          sprite.destroy();
+          enemySpriteMapRef.current.delete(id);
+        }
+      });
+
+      // Sync imperative bullet sprites (re-add to container if React reconciliation removed them)
+      if (bulletTexture) {
+        enemyBullets.forEach((bullet) => {
+          const pos = bulletPositionsRef.current.get(bullet.id) ?? { x: bullet.x, y: bullet.y };
+          let sprite = bulletSpriteMapRef.current.get(bullet.id);
+          if (!sprite) {
+            sprite = new PIXI.Sprite(bulletTexture);
+            sprite.anchor.set(0.5);
+            sprite.scale.set(ENEMY_BULLET_SCALE);
+            sprite.tint = ENEMY_BULLET_TINT;
+            sprite.rotation = Math.PI;
+            bulletSpriteMapRef.current.set(bullet.id, sprite);
+          }
+          sprite.x = pos.x;
+          sprite.y = pos.y;
+          if (!sprite.parent) container.addChild(sprite);
+        });
+        bulletSpriteMapRef.current.forEach((sprite, id) => {
+          if (!enemyBullets.some((b) => b.id === id)) {
+            container.removeChild(sprite);
+            sprite.destroy();
+            bulletSpriteMapRef.current.delete(id);
+            bulletPositionsRef.current.delete(id);
+          }
+        });
+      }
     }
   });
 
@@ -320,80 +460,60 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
     return PIXI.Assets.get("enemy-explosion");
   }, []);
 
-  // Get sprite texture based on animation frame for a specific enemy
-  const getEnemyTexture = useCallback((enemyId: string, isExploding: boolean) => {
-    // If exploding, use explosion texture
-    if (isExploding) {
-      const expState = explosionState.current.get(enemyId);
-      if (!expState || !explosionBaseTexture.baseTexture) return explosionBaseTexture;
+  // Pre-create frame textures for enemy and explosion sheets (avoid per-frame allocations)
+  const enemyFrameTextures = useMemo(() => {
+    const map = new Map<number, PIXI.Texture>();
+    const base = enemyBaseTexture.baseTexture;
+    if (!base) return map;
+    const uniqueFrames = [...new Set(FRAME_SEQUENCE)];
+    uniqueFrames.forEach((actualFrame) => {
+      const x = actualFrame * ENEMY_FRAME_WIDTH;
+      const y = 0;
+      const rect = new PIXI.Rectangle(x, y, ENEMY_FRAME_WIDTH, ENEMY_FRAME_HEIGHT);
+      map.set(actualFrame, new PIXI.Texture(base, rect));
+    });
+    return map;
+  }, [enemyBaseTexture]);
 
-      // Get actual frame number from explosion sequence
-      const actualFrame = EXPLOSION_FRAME_SEQUENCE[expState.frameIndex] || 0;
-      
-      // Calculate position in explosion sprite sheet
-      // Use the actual texture height since explosion has different dimensions
-      const explosionFrameHeight = explosionBaseTexture.baseTexture.height;
+  const explosionFrameTextures = useMemo(() => {
+    const map = new Map<number, PIXI.Texture>();
+    const base = explosionBaseTexture?.baseTexture;
+    if (!base || base.width === 0) return map;
+    const frameHeight = base.height;
+    EXPLOSION_FRAME_SEQUENCE.forEach((actualFrame) => {
       const x = actualFrame * EXPLOSION_FRAME_WIDTH;
-      const y = 0; // Single row sprite sheet
+      const y = 0;
+      const rect = new PIXI.Rectangle(x, y, EXPLOSION_FRAME_WIDTH, frameHeight);
+      map.set(actualFrame, new PIXI.Texture(base, rect));
+    });
+    return map;
+  }, [explosionBaseTexture]);
 
-      // Create rectangle for this frame using actual explosion dimensions
-      const rectangle = new PIXI.Rectangle(x, y, EXPLOSION_FRAME_WIDTH, explosionFrameHeight);
-      
-      // Create texture from explosion base texture
-      return new PIXI.Texture(explosionBaseTexture.baseTexture, rectangle);
-    }
-
-    // Normal enemy animation
-    const animState = enemyAnimState.current.get(enemyId);
-    if (!animState) return enemyBaseTexture;
-
-    // Get actual frame number from sequence
-    const actualFrame = FRAME_SEQUENCE[animState.frameIndex];
-    
-    // Calculate position in sprite sheet
-    const x = actualFrame * ENEMY_FRAME_WIDTH;
-    const y = 0; // Single row sprite sheet
-
-    // Create rectangle for this frame
-    const rectangle = new PIXI.Rectangle(x, y, ENEMY_FRAME_WIDTH, ENEMY_FRAME_HEIGHT);
-    
-    // Create texture from base texture
-    return new PIXI.Texture(enemyBaseTexture.baseTexture, rectangle);
-  }, [enemyBaseTexture, explosionBaseTexture]);
-
-  // Render enemies and bullets
-  return (
-    <Container>
-      {/* Enemy sprites */}
-      {enemies.map((enemy) => {
-        const display = displayPositionsRef.current.get(enemy.id) ?? enemy.positionRef.current;
-        return (
-          <Sprite
-            key={enemy.id}
-            texture={getEnemyTexture(enemy.id, enemy.isExploding || false)}
-            x={display.x}
-            y={display.y}
-            scale={ENEMY_SCALE}
-            anchor={0.5}
-          />
-        );
-      })}
-      
-      {/* Enemy bullets */}
-      {enemyBullets.map((bullet) => (
-        <EnemyBullet
-          key={bullet.id}
-          id={bullet.id}
-          startX={bullet.x}
-          startY={bullet.y}
-          speed={getBulletSpeed()}
-          onDestroy={destroyEnemyBullet}
-          onPlayerHit={onPlayerHit}
-          playerPositionRef={playerPositionRef}
-        />
-      ))}
-    </Container>
+  // Get sprite texture for a live enemy (no explosion frames)
+  const getEnemyTexture = useCallback(
+    (enemyId: string) => {
+      const animState = enemyAnimState.current.get(enemyId);
+      if (!animState) return enemyBaseTexture;
+      const actualFrame = FRAME_SEQUENCE[animState.frameIndex] ?? 0;
+      return enemyFrameTextures.get(actualFrame) ?? enemyBaseTexture;
+    },
+    [enemyBaseTexture, enemyFrameTextures]
   );
+
+  // Bullet texture for imperative enemy bullet sprites
+  const enemyBulletTextureRef = useRef<PIXI.Texture | null>(null);
+  if (!enemyBulletTextureRef.current) {
+    const guns = PIXI.Assets.get("guns");
+    if (guns?.baseTexture?.width) {
+      enemyBulletTextureRef.current = new PIXI.Texture(
+        guns.baseTexture,
+        new PIXI.Rectangle(0, 0, guns.baseTexture.width, guns.baseTexture.height)
+      );
+    }
+  }
+
+  // Single container: all enemies and bullets are updated imperatively in useTick (no React re-renders)
+  return <Container ref={containerRef} />;
 };
 
 export default EnemyFormation;

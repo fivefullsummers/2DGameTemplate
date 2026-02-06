@@ -210,15 +210,6 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
       const newOffset = controlsTop - TARGET_GAP - playerBottomScreenNoOffset;
 
       setVerticalOffset(newOffset);
-
-      // eslint-disable-next-line no-console
-      console.log("[layout] verticalOffset computed", {
-        controlsTop,
-        playerCenterWorldY,
-        playerBottomScreenNoOffset,
-        TARGET_GAP,
-        verticalOffset: newOffset,
-      });
     };
 
     // Run once after mount/layout
@@ -267,36 +258,6 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   // On mobile we want roughly a 100px tall controls area.
   const mobileControlsHeight = isMobile() ? 100 : 0;
   const stageHeight = height - mobileControlsHeight;
-
-  // Debug logging: enemy formation vs top and vs player on mobile.
-  useEffect(() => {
-    if (!isMobile()) return;
-    if (enemies.length === 0) return;
-
-    // Use the current enemy refs for most up-to-date world Y positions.
-    const enemyWorldYs = enemies.map((enemy) => enemy.positionRef.current.y);
-    const topEnemyWorldY = Math.min(...enemyWorldYs);
-
-    const playerWorldY = playerPositionRef.current.y;
-
-    const topEnemyScreenY = verticalOffset + topEnemyWorldY * scale;
-    const playerScreenY = verticalOffset + playerWorldY * scale;
-
-    const distanceEnemyToTopScreen = topEnemyScreenY; // from top of game area
-    const distancePlayerToEnemyScreen = playerScreenY - topEnemyScreenY;
-
-    // eslint-disable-next-line no-console
-    console.log("[layout] Enemies", {
-      topEnemyWorldY,
-      playerWorldY,
-      topEnemyScreenY,
-      playerScreenY,
-      distanceEnemyToTopScreen,
-      distancePlayerToEnemyScreen,
-      scale,
-      verticalOffset,
-    });
-  }, [enemies, scale, verticalOffset]);
 
   return (
     <div

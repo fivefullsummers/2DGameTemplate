@@ -8,7 +8,6 @@ import enemyAnimatedAsset from "../assets/enemies/enemy.png";
 import enemyExplosionAsset from "../assets/enemies/enemy_explosion.png";
 import mapAsset from "../assets/back.png";
 import gunsAsset from "../assets/misc/shot.png";
-import spaceInvadersMusic from "../assets/sounds/start2.mp3";
 import explosionSound from "../assets/sounds/explosion.wav";
 import poundSound from "../assets/sounds/Pound.wav";
 import level1Music from "../assets/sounds/SpaceInvaders2.mp3";
@@ -52,11 +51,6 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     alias: "guns",
     src: gunsAsset,
     description: "Bullet/shot sprites (shot.png)",
-  },
-  {
-    alias: "space-invaders-music",
-    src: spaceInvadersMusic,
-    description: "Space Invaders theme music",
   },
   {
     alias: "explosion-sound",
@@ -121,7 +115,6 @@ export class AssetLoader {
       .then(async () => {
         // Register audio files with PIXI sound system after loading
         const audioAssets = [
-          { alias: "space-invaders-music", src: spaceInvadersMusic },
           { alias: "explosion-sound", src: explosionSound },
           { alias: "pound-sound", src: poundSound },
           { alias: "level1-music", src: level1Music },

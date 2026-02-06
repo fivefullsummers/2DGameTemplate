@@ -186,7 +186,7 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
       return;
     }
 
-    const TARGET_GAP = 50; // px between player bottom and controls top
+    const TARGET_GAP = 100; // px between player bottom and controls top
 
     const recomputeOffset = () => {
       if (typeof window === "undefined") return;

@@ -304,12 +304,18 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
       style={{
         position: 'relative',
         width: '100vw',
-        height: '100vh',
+        // Use the measured window.innerHeight from useDimensions()
+        // instead of CSS 100vh to avoid iOS Safari's "tall" viewport
+        // bug that leaves extra space between the game and controls.
+        height: `${height}px`,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-start',
         alignItems: 'center',
         overflow: 'hidden',
+        // Match the dark blue game background so any residual gaps
+        // (e.g., due to browser UI chrome) blend seamlessly.
+        backgroundColor: '#050b30',
       }}
     >
       <HUD showDebugInfo={false} />

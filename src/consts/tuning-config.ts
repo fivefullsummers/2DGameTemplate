@@ -10,6 +10,7 @@
 // - Enemy vertical offset (how high the formation sits)
 // - Player visual scale
 // - Player starting Y position
+// - Player collision radius (hitbox; larger on mobile = easier to dodge bullets)
 //
 // To make desktop look different from mobile, change ONLY the
 // values in the `desktop` section below.
@@ -32,6 +33,8 @@ const DEVICE_TUNING = {
 
     // Player
     playerScale: 0.23,
+    // Larger hitbox on mobile for more forgiving bullet collision.
+    playerCollisionRadius: TILE_SIZE * 0.75,
     // Spawn close to the very bottom of the in-world playfield while
     // remaining inside the collision-safe bounds.
     playerStartY: GAME_HEIGHT - TILE_SIZE,
@@ -45,6 +48,7 @@ const DEVICE_TUNING = {
 
     // Player
     playerScale: 0.1,
+    playerCollisionRadius: TILE_SIZE / 2,
     playerStartY: TILE_SIZE * 12,
   },
 } as const;
@@ -57,6 +61,7 @@ export const ENEMY_SPACING_X = ACTIVE_TUNING.enemySpacingX;
 export const ENEMY_SPACING_Y = ACTIVE_TUNING.enemySpacingY;
 export const ENEMY_FORMATION_OFFSET_Y = ACTIVE_TUNING.enemyFormationOffsetY;
 
-// Player configuration (used by PlayerAnimated)
+// Player configuration (used by PlayerAnimated and collision checks)
 export const PLAYER_SCALE = ACTIVE_TUNING.playerScale;
+export const PLAYER_COLLISION_RADIUS = ACTIVE_TUNING.playerCollisionRadius;
 export const PLAYER_START_Y = ACTIVE_TUNING.playerStartY;

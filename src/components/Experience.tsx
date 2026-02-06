@@ -17,7 +17,7 @@ import { useControlsContext } from "../contexts/ControlsContext";
 import { sound } from "@pixi/sound";
 import { getEnemyPositions } from "../consts/enemies-map";
 import { gameState } from "../utils/GameState";
-import { ENEMY_SCALE, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
+import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 import PlaneBackground from "./PlaneBackground";
 import MobileControlsBar from "./MobileControlsBar";
 
@@ -244,7 +244,6 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
   }, [enemies]);
 
   // Calculate collision radii for display
-  const PLAYER_RADIUS = TILE_SIZE / 2;
   const ENEMY_RADIUS = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2;
 
   // For desktop, horizontally center the scaled game world within the
@@ -282,7 +281,7 @@ const ExperienceContent = ({ onGameOver }: ExperienceContentProps) => {
       <HUD showDebugInfo={false} />
       <CollisionInfo
         isVisible={showCollisionDebug}
-        playerRadius={PLAYER_RADIUS}
+        playerRadius={PLAYER_COLLISION_RADIUS}
         enemyRadius={ENEMY_RADIUS}
       />
       <Stage width={width} height={stageHeight} onPointerDown={handleStageClick}>

@@ -7,7 +7,7 @@ import { Graphics, useTick } from "@pixi/react";
 import { Graphics as PixiGraphics } from "pixi.js";
 import { useCallback, useRef } from "react";
 import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
-import { ENEMY_SCALE } from "../consts/tuning-config";
+import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS } from "../consts/tuning-config";
 import { IPosition } from "../types/common";
 
 interface EnemyData {
@@ -31,7 +31,6 @@ const EntityCollisionDebug = ({
 }: EntityCollisionDebugProps) => {
   
   // Collision radius calculations (matching the actual collision detection)
-  const PLAYER_RADIUS = TILE_SIZE / 2; // 16 pixels (from EnemyBullet.tsx line 76)
   const ENEMY_RADIUS = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2; // Actual collision area
   
   const graphicsRef = useRef<PixiGraphics>(null);
@@ -53,7 +52,7 @@ const EntityCollisionDebug = ({
       
       // Effective collision radius includes bullet radius (8px) + player radius (16px) = 24px total
       const bulletRadius = 8;
-      const effectiveRadius = PLAYER_RADIUS + bulletRadius;
+      const effectiveRadius = PLAYER_COLLISION_RADIUS + bulletRadius;
       
       // Draw center point
       g.lineStyle(0);
@@ -70,7 +69,7 @@ const EntityCollisionDebug = ({
       
       // Draw player hitbox (just player radius, not including bullet)
       g.lineStyle(2, 0x00ff00, 0.5); // Green, semi-transparent
-      g.drawCircle(collisionCenterX, collisionCenterY, PLAYER_RADIUS);
+      g.drawCircle(collisionCenterX, collisionCenterY, PLAYER_COLLISION_RADIUS);
       
       // Draw EFFECTIVE collision area (includes bullet radius)
       g.lineStyle(3, 0x00ff00, 0.9); // Green, thick, very visible

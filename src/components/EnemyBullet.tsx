@@ -2,6 +2,7 @@ import { Sprite, useTick } from "@pixi/react";
 import { useState, useMemo, useEffect } from "react";
 import * as PIXI from "pixi.js";
 import { TILE_SIZE } from "../consts/game-world";
+import { PLAYER_COLLISION_RADIUS } from "../consts/tuning-config";
 
 export interface EnemyBulletProps {
   id: string;
@@ -72,7 +73,6 @@ const EnemyBullet = ({
       if (playerPositionRef?.current) {
         const playerX = playerPositionRef.current.x;
         const playerY = playerPositionRef.current.y;
-        const playerRadius = TILE_SIZE / 2;
         // Calculate bullet radius based on scale (0.15) and texture size
         const bulletRadius = (cachedTexture.baseTexture.width * 0.15) / 2; // scale 0.15 applied to sprite
 
@@ -82,7 +82,7 @@ const EnemyBullet = ({
         const dy = newY - playerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < bulletRadius + playerRadius) {
+        if (distance < bulletRadius + PLAYER_COLLISION_RADIUS) {
           // Hit player!
           setHasHitPlayer(true);
           setShouldDestroy(true);

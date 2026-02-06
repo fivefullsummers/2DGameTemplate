@@ -1,7 +1,7 @@
 import { Container, useTick } from "@pixi/react";
 import { useState, useCallback, useRef, useMemo } from "react";
 import * as PIXI from "pixi.js";
-import { ENEMY_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
+import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_START_Y } from "../consts/tuning-config";
 import { TILE_SIZE, COLS } from "../consts/game-world";
 import { IPosition } from "../types/common";
 import { textureCache } from "../utils/textureCache";
@@ -10,7 +10,6 @@ import { gameState } from "../utils/GameState";
 
 const ENEMY_BULLET_SCALE = 0.05;
 const ENEMY_BULLET_TINT = 0xff0000;
-const PLAYER_RADIUS = TILE_SIZE / 2;
 
 // Enemy animation configuration
 // Frame sequence: 0 -> 1 -> 2 -> 1 -> 0 (5-step cycle)
@@ -365,7 +364,7 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
         const dx = pos.x - playerX;
         const dy = pos.y - playerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < bulletRadius + PLAYER_RADIUS) {
+        if (distance < bulletRadius + PLAYER_COLLISION_RADIUS) {
           idsToRemove.add(bullet.id);
           didHitPlayer = true;
         }

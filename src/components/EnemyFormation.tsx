@@ -1,8 +1,7 @@
 import { Container, useTick, Sprite } from "@pixi/react";
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import * as PIXI from "pixi.js";
 import { ENEMY_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
-import { isMobile } from "../consts/game-world";
 import { TILE_SIZE, COLS } from "../consts/game-world";
 import { IPosition } from "../types/common";
 import EnemyBullet from "./EnemyBullet";
@@ -361,20 +360,6 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
     // Create texture from base texture
     return new PIXI.Texture(enemyBaseTexture.baseTexture, rectangle);
   }, [enemyBaseTexture, explosionBaseTexture]);
-
-  // Log enemy sprite size on mobile once the base texture is ready
-  useEffect(() => {
-    if (!isMobile()) return;
-    if (!enemyBaseTexture.baseTexture || enemyBaseTexture.baseTexture.width === 0) return;
-
-    const baseW = enemyBaseTexture.baseTexture.width;
-    const baseH = enemyBaseTexture.baseTexture.height;
-    const scale = ENEMY_SCALE;
-
-    console.log(
-      `[EnemyFormation] mobile enemy sprite size: ${baseW * scale} x ${baseH * scale} (base ${baseW} x ${baseH}, scale ${scale})`
-    );
-  }, [enemyBaseTexture]);
 
   // Render enemies and bullets
   return (

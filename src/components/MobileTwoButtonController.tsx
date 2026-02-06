@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Direction } from '../types/common';
+import {
+  MOBILE_MOVE_BUTTON_BOTTOM,
+  MOBILE_MOVE_BUTTON_SIZE,
+} from '../consts/mobile-controls-config';
 
 interface MobileTwoButtonControllerProps {
   onDirectionChange: (direction: Direction | null) => void;
@@ -9,6 +13,35 @@ interface MobileTwoButtonControllerProps {
 const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwoButtonControllerProps) => {
   const [leftPressed, setLeftPressed] = useState(false);
   const [rightPressed, setRightPressed] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Debug logging: button positions vs screen on mobile.
+  useEffect(() => {
+    const logLayout = () => {
+      if (typeof window === 'undefined') return;
+      if (!containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const windowWidth = window.innerWidth;
+
+      // eslint-disable-next-line no-console
+      console.log('[layout] MobileTwoButtonController', {
+        windowHeight,
+        windowWidth,
+        rectTop: rect.top,
+        rectBottom: rect.bottom,
+        rectHeight: rect.height,
+        distanceFromBottom: windowHeight - rect.top,
+        MOBILE_MOVE_BUTTON_BOTTOM,
+        MOBILE_MOVE_BUTTON_SIZE,
+      });
+    };
+
+    logLayout();
+    window.addEventListener('resize', logLayout);
+    return () => window.removeEventListener('resize', logLayout);
+  }, []);
 
   const calculateDirection = useCallback(
     (left: boolean, right: boolean): Direction | null => {
@@ -58,9 +91,10 @@ const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwo
 
   return (
     <div
+      ref={containerRef}
       style={{
-        position: 'fixed',
-        bottom: '30px',
+        position: 'absolute',
+        bottom: `${MOBILE_MOVE_BUTTON_BOTTOM}px`,
         left: '30px',
         width: '150px',
         display: 'flex',
@@ -78,8 +112,8 @@ const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwo
         onMouseUp={handleLeftUp}
         style={{
           pointerEvents: 'auto',
-          width: '60px',
-          height: '60px',
+          width: `${MOBILE_MOVE_BUTTON_SIZE}px`,
+          height: `${MOBILE_MOVE_BUTTON_SIZE}px`,
           borderRadius: '50%',
           backgroundColor: leftPressed
             ? 'rgba(255, 255, 255, 0.9)'
@@ -119,8 +153,8 @@ const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwo
         onMouseUp={handleRightUp}
         style={{
           pointerEvents: 'auto',
-          width: '60px',
-          height: '60px',
+          width: `${MOBILE_MOVE_BUTTON_SIZE}px`,
+          height: `${MOBILE_MOVE_BUTTON_SIZE}px`,
           borderRadius: '50%',
           backgroundColor: rightPressed
             ? 'rgba(255, 255, 255, 0.9)'

@@ -2,13 +2,12 @@ import { Sprite, useTick } from "@pixi/react";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import * as PIXI from "pixi.js";
 import { sound } from "@pixi/sound";
-import { TILE_SIZE, COLS, GAME_HEIGHT, isMobile } from "../consts/game-world";
+import { TILE_SIZE, COLS } from "../consts/game-world";
 import { isBlocked } from "../consts/collision-map";
 import { BulletManagerRef } from "./BulletManager";
 import { GUN_TYPES, DEFAULT_GUN_TYPE } from "../consts/bullet-config";
 import { Direction, IPosition } from "../types/common";
 import { PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
-import { calculateDimensions } from "../helpers/common";
 
 // Sprite sheet configuration for cool.png
 // cool.png is 1536 width with 3 sprites horizontally
@@ -93,49 +92,50 @@ const PlayerAnimated = ({
   // verticalOffset in Experience.tsx instead of pushing the player
   // below the collision map (which breaks movement).
   const startX = ((COLS - 2) * TILE_SIZE) / 2; // Center horizontally
-  // Default Y comes from central tuning config (enemy-config.ts)
   const defaultStartY = PLAYER_START_Y;
   const startY = initialY !== undefined ? initialY : defaultStartY;
   const [position, setPosition] = useState({ x: startX, y: startY });
-  
-  // Death/respawn state
+
+  // Single tick state: one setState per frame to trigger re-render (reads from refs)
+  const [tick, setTick] = useState(0);
+
+  // Death/respawn state (state so parent/effects see it)
   const [isDead, setIsDead] = useState(false);
   const [isExploding, setIsExploding] = useState(false);
   const deathPosition = useRef<IPosition | null>(null);
-  
-  // Keep position ref in sync with position state
+
+  // Display and animation in refs to avoid multiple setState per frame
+  const displayPositionRef = useRef({ x: startX, y: startY });
+  const currentFrameRef = useRef(0);
+  const frameAccumulatorRef = useRef(0);
+  const isWalkingRef = useRef(false);
+  const isAnimatingRef = useRef(false);
+
+  const [currentSheetName, setCurrentSheetName] = useState<string>("idle");
+  const [currentRow] = useState(ANIMATIONS.IDLE);
+  const lastShotTime = useRef(0);
+  const velocityXRef = useRef(0);
+
+  // Keep parent position ref in sync (updated in useTick; sync ref on position state change e.g. respawn)
   useEffect(() => {
     if (positionRef) {
       positionRef.current = position;
     }
+    displayPositionRef.current = { ...position };
   }, [position, positionRef]);
-
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [currentRow] = useState(ANIMATIONS.IDLE);
-  const [currentSheetName, setCurrentSheetName] = useState<string>("idle");
-  const [, setFrameAccumulator] = useState(0);
-  const [isWalking, setIsWalking] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const lastShotTime = useRef(0);
-  const velocityXRef = useRef(0); // for eased horizontal movement
   
   // Death trigger function
   const triggerDeath = useCallback(() => {
-    if (isDead || isExploding) return; // Already dead or exploding
-    
-    // Play explosion sound
+    if (isDead || isExploding) return;
     const explosionSfx = sound.find("explosion-sound");
-    if (explosionSfx) {
-      explosionSfx.play({ volume: 0.5 });
-    }
-    
+    if (explosionSfx) explosionSfx.play({ volume: 0.5 });
     setIsDead(true);
     setIsExploding(true);
-    deathPosition.current = { ...position };
+    deathPosition.current = { ...displayPositionRef.current };
     setCurrentSheetName("explosion");
-    setCurrentFrame(0);
-    setFrameAccumulator(0);
-  }, [isDead, isExploding, position]);
+    currentFrameRef.current = 0;
+    frameAccumulatorRef.current = 0;
+  }, [isDead, isExploding]);
 
   // Expose death trigger to parent via ref
   useEffect(() => {
@@ -155,207 +155,116 @@ const PlayerAnimated = ({
     return PIXI.Assets.get(currentSheet.asset);
   }, [currentSheet.asset]);
 
-  // Create texture for current frame
+  // Create texture for current frame (tick forces re-run to read currentFrameRef.current)
   const currentTexture = useMemo(() => {
+    void tick; // dependency: re-run when tick updates so we read fresh currentFrameRef
+    const currentFrame = currentFrameRef.current;
     const frameIndex = currentFrame % currentSheet.frameSequence.length;
     const actualFrame = currentSheet.frameSequence[frameIndex];
-    
-    if (actualFrame === undefined) {
-      console.warn(`Frame ${frameIndex} not found in sequence:`, currentSheet.frameSequence);
-      return cachedTexture;
-    }
-    
-    // Get actual texture dimensions (wait for texture to load)
-    if (!cachedTexture.baseTexture || cachedTexture.baseTexture.width === 0) {
-      return cachedTexture; // Return base texture while loading
-    }
-    
-    // Use actual texture height for single-row sprite sheet
+    if (actualFrame === undefined) return cachedTexture;
+    if (!cachedTexture.baseTexture || cachedTexture.baseTexture.width === 0) return cachedTexture;
     const actualFrameHeight = cachedTexture.baseTexture.height;
-    
-    // Calculate the position of the current frame in the sprite sheet
-    // cool.png has 3 frames horizontally, so x = frame * FRAME_WIDTH
     const x = actualFrame * FRAME_WIDTH;
     const y = currentRow * actualFrameHeight;
-
     const rectangle = new PIXI.Rectangle(x, y, FRAME_WIDTH, actualFrameHeight);
-    const texture = new PIXI.Texture(cachedTexture.baseTexture, rectangle);
-    
-    return texture;
-  }, [cachedTexture, currentFrame, currentRow, currentSheet.frameSequence]);
+    return new PIXI.Texture(cachedTexture.baseTexture, rectangle);
+  }, [cachedTexture, currentRow, currentSheet.frameSequence, tick]);
 
   useTick((delta) => {
-    // Handle explosion animation
+    const pos = displayPositionRef.current;
+
+    // Handle explosion animation (refs only; state updates only on respawn)
     if (isExploding) {
-      setFrameAccumulator((prev) => {
-        const newAccumulator = prev + currentSheet.speed * delta;
-        
-        if (newAccumulator >= 1) {
-          setCurrentFrame((frame) => {
-            const nextFrame = frame + 1;
-            
-            // Check if explosion animation is complete
-            if (nextFrame >= currentSheet.frameSequence.length) {
-              // Respawn player
-              setIsExploding(false);
-              setIsDead(false);
-              setPosition({ x: startX, y: startY });
-              deathPosition.current = null;
-              setCurrentSheetName("idle");
-              setCurrentFrame(0);
-              setFrameAccumulator(0);
-              return 0;
-            }
-            
-            return nextFrame;
-          });
-          return 0;
+      frameAccumulatorRef.current += currentSheet.speed * delta;
+      if (frameAccumulatorRef.current >= 1) {
+        frameAccumulatorRef.current = 0;
+        const nextFrame = currentFrameRef.current + 1;
+        if (nextFrame >= currentSheet.frameSequence.length) {
+          setIsExploding(false);
+          setIsDead(false);
+          setPosition({ x: startX, y: startY });
+          deathPosition.current = null;
+          setCurrentSheetName("idle");
+          currentFrameRef.current = 0;
+          frameAccumulatorRef.current = 0;
+          displayPositionRef.current = { x: startX, y: startY };
+          if (positionRef) positionRef.current = { x: startX, y: startY };
+        } else {
+          currentFrameRef.current = nextFrame;
         }
-        
-        return newAccumulator;
-      });
-      return; // Don't process other logic while exploding
+      }
+      setTick((t) => t + 1);
+      return;
     }
 
-    // Don't process controls if dead
-    if (isDead) return;
+    if (isDead) {
+      setTick((t) => t + 1);
+      return;
+    }
 
     const { pressedKeys } = getControlsDirection();
-
-    // Handle shooting input
     const canShoot = bulletManagerRef?.current;
     const shootKeyPressed = consumeShootPress();
     const shootKeyHeld = isShootHeld();
-    
-    // Check fire rate cooldown
     const now = Date.now();
     const canFireAgain = now - lastShotTime.current >= currentGun.fireRate;
-    
-    // Trigger shooting if conditions are met (always shoot UP)
+
     if (canShoot && canFireAgain) {
-      // Single shot or automatic
       const shouldShoot = shootKeyPressed || (currentGun.automatic && shootKeyHeld);
-      
       if (shouldShoot) {
         lastShotTime.current = now;
-
-        // Spawn bullet at player center; BulletManager is responsible
-        // for playing the shoot sound only when a bullet is actually
-        // created (no maxBullets block, valid bulletType, etc.).
-        // Use position state directly - it's the most current within useTick
-        // Player sprite uses anchor={0.5}, so position is already the center
-        bulletManagerRef.current.spawnBullet(
-          position.x, // Spawn at exact center X
-          position.y, // Spawn at exact center Y (we can adjust later)
-          "UP", // Always shoot up
-          currentGun.bulletType
-        );
-
-        // Inform controls layer that a shot was successfully fired so
-        // the UI (mobile shoot button) can show cooldown progress.
+        bulletManagerRef.current.spawnBullet(pos.x, pos.y, "UP", currentGun.bulletType);
         notifyShotFired(currentGun.fireRate);
       }
     }
 
-    // Handle movement
-    setPosition((prev) => {
-      const { x, y } = prev;
-      let dx = 0;
+    // Movement: update refs only
+    let dx = 0;
+    if (pressedKeys.includes("LEFT")) dx -= 1;
+    if (pressedKeys.includes("RIGHT")) dx += 1;
+    const magnitude = Math.sqrt(dx * dx);
+    const moving = magnitude > 0;
+    isWalkingRef.current = moving;
+    if (moving && !isAnimatingRef.current) isAnimatingRef.current = true;
 
-      if (pressedKeys.includes("LEFT")) dx -= 1;
-      if (pressedKeys.includes("RIGHT")) dx += 1;
-      // No vertical movement for Space Invaders style
-      
-      const magnitude = Math.sqrt(dx * dx);
-      const moving = magnitude > 0;
-      setIsWalking(moving);
+    const isShiftPressed = pressedKeys.includes("SHIFT");
+    const speedMultiplier = isShiftPressed ? SPEED_BOOST_MULTIPLIER : 1;
+    const targetVelocityX = magnitude > 0 ? (dx / magnitude) * MOVEMENT_SPEED * speedMultiplier : 0;
+    let vx = velocityXRef.current;
+    vx += (targetVelocityX - vx) * ACCELERATION_FACTOR;
+    velocityXRef.current = vx;
+    const newX = pos.x + vx;
+    const newY = pos.y;
 
-      if (moving) {
-        if (!isAnimating) {
-          setIsAnimating(true);
-        }
-        
-        // Check if shift is pressed for speed boost
-        const isShiftPressed = pressedKeys.includes("SHIFT");
-        const speedMultiplier = isShiftPressed ? SPEED_BOOST_MULTIPLIER : 1;
-
-        // Target velocity based on input; we then ease current velocity
-        // toward this target to give a sense of acceleration.
-        const targetVelocityX = (dx / magnitude) * MOVEMENT_SPEED * speedMultiplier;
-        let vx = velocityXRef.current;
-        vx += (targetVelocityX - vx) * ACCELERATION_FACTOR;
-        velocityXRef.current = vx;
-
-        // Calculate new position (only horizontal movement)
-        const newX = x + vx;
-        const newY = y; // Keep Y position fixed (bottom of screen)
-
-        // Check collision with walls
-        if (isBlocked(newX, newY)) {
-          return prev;
-        }
-
-        // Update position ref
-        if (positionRef) {
-          positionRef.current = { x: newX, y: newY };
-        }
-
-        return { x: newX, y: newY };
-      } else {
-        // No input: ease velocity back toward zero for a soft stop
-        let vx = velocityXRef.current;
-        vx += (0 - vx) * ACCELERATION_FACTOR;
-        velocityXRef.current = vx;
-
-        const newX = x + vx;
-        const newY = y;
-
-        if (isBlocked(newX, newY)) {
-          return prev;
-        }
-
-        if (positionRef) {
-          positionRef.current = { x: newX, y: newY };
-        }
-
-        return { x: newX, y: newY };
-      }
-    });
-
-    // Handle animation frame updates
-    const shouldAnimate = isWalking || isAnimating || currentSheetName === "idle";
-    
-    if (shouldAnimate) {
-      setFrameAccumulator((prev) => {
-        const newAccumulator = prev + currentSheet.speed * delta;
-        
-        if (newAccumulator >= 1) {
-          setCurrentFrame((frame) => {
-            const nextFrame = (frame + 1) % currentSheet.frameSequence.length;
-            
-            if (nextFrame % currentSheet.framesPerStep === 0 && !isWalking && currentSheetName !== "idle") {
-              setIsAnimating(false);
-              return 0;
-            }
-            
-            return nextFrame;
-          });
-          return 0;
-        }
-        
-        return newAccumulator;
-      });
-    } else {
-      setCurrentFrame(0);
-      setFrameAccumulator(0);
+    if (!isBlocked(newX, newY)) {
+      displayPositionRef.current = { x: newX, y: newY };
+      if (positionRef) positionRef.current = { x: newX, y: newY };
     }
+
+    // Animation: update refs only
+    const shouldAnimate = isWalkingRef.current || isAnimatingRef.current || currentSheetName === "idle";
+    if (shouldAnimate) {
+      frameAccumulatorRef.current += currentSheet.speed * delta;
+      if (frameAccumulatorRef.current >= 1) {
+        frameAccumulatorRef.current = 0;
+        const nextFrame = (currentFrameRef.current + 1) % currentSheet.frameSequence.length;
+        if (nextFrame % currentSheet.framesPerStep === 0 && !isWalkingRef.current && currentSheetName !== "idle") {
+          isAnimatingRef.current = false;
+          currentFrameRef.current = 0;
+        } else {
+          currentFrameRef.current = nextFrame;
+        }
+      }
+    } else {
+      currentFrameRef.current = 0;
+      frameAccumulatorRef.current = 0;
+    }
+
+    setTick((t) => t + 1);
   });
 
 
-  // Use death position during explosion, otherwise use current position
-  const displayPosition = isExploding && deathPosition.current ? deathPosition.current : position;
-
-  // Player visual scale comes from central tuning config.
+  const displayPosition = isExploding && deathPosition.current ? deathPosition.current : displayPositionRef.current;
   const playerScale = PLAYER_SCALE;
 
   return (

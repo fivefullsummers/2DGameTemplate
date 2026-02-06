@@ -62,13 +62,19 @@ const PlaneBackground = ({ width, height }: PlaneBackgroundProps) => {
       meshRef.current = mesh;
       container.addChild(mesh);
     } else {
-      meshRef.current.geometry = geometry;
+      const mesh = meshRef.current;
+      const oldGeometry = mesh.geometry;
+      if (oldGeometry && oldGeometry !== geometry) {
+        oldGeometry.destroy();
+      }
+      mesh.geometry = geometry;
     }
 
     return () => {
       const mesh = meshRef.current;
       if (mesh && container) {
         container.removeChild(mesh);
+        if (mesh.geometry) mesh.geometry.destroy();
         mesh.destroy();
         meshRef.current = null;
       }

@@ -74,6 +74,8 @@ interface PlayerAnimatedProps {
   playerRef?: React.MutableRefObject<PlayerRef | null>;
   initialY?: number;
   notifyShotFired: (fireRate: number) => void;
+  isExiting?: boolean;
+  onExitComplete?: () => void;
 }
 
 const PlayerAnimated = ({ 
@@ -86,6 +88,8 @@ const PlayerAnimated = ({
   playerRef,
   initialY,
   notifyShotFired,
+  isExiting = false,
+  onExitComplete,
 }: PlayerAnimatedProps) => {
   // Calculate bottom center position (Space Invaders style) within the
   // collision-safe playfield. We move the *world* visually via
@@ -172,6 +176,23 @@ const PlayerAnimated = ({
 
   useTick((delta) => {
     const pos = displayPositionRef.current;
+
+    // Handle level-exit animation: move straight up and ignore input/shooting.
+    if (isExiting) {
+      const EXIT_SPEED = 10; // pixels per frame
+      const newY = pos.y - EXIT_SPEED * delta;
+      const newPos = { x: pos.x, y: newY };
+      displayPositionRef.current = newPos;
+      if (positionRef) positionRef.current = newPos;
+
+      // Once the player is fully above the top of the screen, notify parent.
+      if (newY < -TILE_SIZE && onExitComplete) {
+        onExitComplete();
+      }
+
+      setTick((t) => t + 1);
+      return;
+    }
 
     // Handle explosion animation (refs only; state updates only on respawn)
     if (isExploding) {

@@ -10,7 +10,7 @@
   right: 0;
   z-index: 1000;
   pointer-events: none;
-  font-family: 'Courier New', 'Consolas', monospace;
+  font-family: 'Neopixel', sans-serif;
   color: #00ff00;
   text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff0080;
 }
@@ -115,6 +115,30 @@
   letter-spacing: 2px;
   animation: gameOverFlash 0.5s ease-in-out infinite;
   text-shadow: 0 0 10px #ff0000, 0 0 20px #ff000080;
+}
+
+/* Weapon name in HUD */
+.hud-weapon-name {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #00ff88;
+  text-shadow: 0 0 6px #00ff8880;
+  max-width: 140px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Executive Order indicator (e.g. King's Mode) */
+.hud-executive-order-badge {
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #00ff88;
+  text-shadow: 0 0 8px #00ff88, 0 0 16px #00ff8880;
+  padding: 2px 8px;
+  border: 1px solid #00ff88;
+  border-radius: 4px;
+  opacity: 0.95;
 }
 
 @keyframes gameOverFlash {

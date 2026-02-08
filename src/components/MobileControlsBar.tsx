@@ -1,9 +1,18 @@
 import MobileTwoButtonController from "./MobileTwoButtonController";
 import MobileShootButton from "./MobileShootButton";
+import BigRedButton from "./BigRedButton";
 import { useControlsContext } from "../contexts/ControlsContext";
 import { isMobile } from "../consts/game-world";
 
-const MobileControlsBar = () => {
+interface MobileControlsBarProps {
+  onBigRedButtonPress?: () => void;
+  bigRedButtonEnabled?: boolean;
+}
+
+const MobileControlsBar = ({
+  onBigRedButtonPress,
+  bigRedButtonEnabled = false,
+}: MobileControlsBarProps) => {
   const {
     setJoystickDirection,
     setJoystickRun,
@@ -33,6 +42,9 @@ const MobileControlsBar = () => {
         onDirectionChange={setJoystickDirection}
         onRunChange={setJoystickRun}
       />
+      {bigRedButtonEnabled && onBigRedButtonPress && (
+        <BigRedButton onPress={onBigRedButtonPress} />
+      )}
       <MobileShootButton
         onShoot={triggerMobileShoot}
         shotCooldownInfo={shotCooldownInfo}

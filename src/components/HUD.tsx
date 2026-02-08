@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { gameState, IGameStateData } from '../utils/GameState';
+import { BULLET_TYPES } from '../consts/bullet-config';
 import './HUD.css';
 
 interface HUDProps {
@@ -63,6 +64,21 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
             {state.lives === 0 && <div className="game-over-indicator">GAME OVER</div>}
           </div>
         </div>
+
+        {/* Current weapon (bullet name) */}
+        <div className="hud-section hud-weapon">
+          <div className="hud-label">WEAPON</div>
+          <div className="hud-value hud-weapon-name">
+            {BULLET_TYPES[state.selectedBulletType]?.name ?? state.selectedBulletType ?? 'Basic Bullet'}
+          </div>
+        </div>
+
+        {/* Executive Order: King's Mode indicator */}
+        {state.kingsModeEnabled && (
+          <div className="hud-section hud-executive-order">
+            <div className="hud-executive-order-badge">KING'S MODE</div>
+          </div>
+        )}
       </div>
 
       {/* Debug Info (optional) */}
@@ -91,8 +107,8 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
         </div>
       )}
 
-      {/* Extra Life Message (shows briefly when awarded) */}
-      {state.score >= 1500 && state.extraLifeAwarded && (
+      {/* Extra Life Message (only for ~2.5s right when we award, not on next wave) */}
+      {state.showExtraLifeMessage && (
         <div className="hud-message extra-life-message">
           <div className="message-text">EXTRA LIFE!</div>
         </div>

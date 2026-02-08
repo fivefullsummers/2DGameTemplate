@@ -1,11 +1,13 @@
 import { Sprite, useTick } from "@pixi/react";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import * as PIXI from "pixi.js";
+import { gsap } from "gsap";
 import { sound } from "@pixi/sound";
 import { TILE_SIZE, COLS } from "../consts/game-world";
 import { isBlocked } from "../consts/collision-map";
 import { BulletManagerRef } from "./BulletManager";
-import { GUN_TYPES, DEFAULT_GUN_TYPE } from "../consts/bullet-config";
+import { GUN_TYPES, DEFAULT_GUN_TYPE, BULLET_TYPES } from "../consts/bullet-config";
+import { gameState } from "../utils/GameState";
 import { Direction, IPosition } from "../types/common";
 import { PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 
@@ -39,10 +41,17 @@ const getAssetPath = (assetAlias: string): string => {
 const ANIMATION_SHEETS: Record<string, AnimationSheet> = {
   idle: {
     asset: getAssetPath("hero-cool"),
-    frameSequence: [0, 1], // Cycle through all 3 frames
+    frameSequence: [0, 1], // Cycle through frames 0–1
     idleFrame: 0,          // Frame 0 is default idle pose
     framesPerStep: 1,      // Complete quickly when transitioning
     speed: 0.15,           // Animation speed
+  },
+  exit: {
+    asset: getAssetPath("hero-cool"),
+    frameSequence: [1, 2], // Frames 1–2: ship + big flame exhaust
+    idleFrame: null,
+    framesPerStep: 1,
+    speed: 0.2,            // Cycle speed during takeoff
   },
   explosion: {
     asset: getAssetPath("hero-explosion"),
@@ -120,6 +129,49 @@ const PlayerAnimated = ({
   const lastShotTime = useRef(0);
   const velocityXRef = useRef(0);
 
+  // Exit animation: GSAP tween for takeoff (slow start, then jets off)
+  const exitPositionRef = useRef({ x: startX, y: startY });
+  const exitSyncedRef = useRef(false);
+  const EXIT_COMPLETE_THRESHOLD = -TILE_SIZE * 3;
+  const EXIT_DURATION = 2;
+  useEffect(() => {
+    if (!isExiting || !onExitComplete) return;
+    const current = displayPositionRef.current;
+    exitPositionRef.current = { x: current.x, y: current.y };
+    const obj = { y: current.y };
+    const tween = gsap.to(obj, {
+      y: EXIT_COMPLETE_THRESHOLD,
+      duration: EXIT_DURATION,
+      ease: "expo.in", // Slow start, then rapid acceleration (takeoff feel)
+      onUpdate: () => {
+        exitPositionRef.current = { x: current.x, y: obj.y };
+        if (positionRef) positionRef.current = exitPositionRef.current;
+        setTick((t) => t + 1);
+      },
+      onComplete: () => {
+        onExitComplete();
+      },
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [isExiting, onExitComplete, positionRef]);
+
+  useEffect(() => {
+    if (!isExiting) exitSyncedRef.current = false;
+  }, [isExiting]);
+
+  // Switch to exit sheet (frames 1–2, flame) when exiting; back to idle when done
+  useEffect(() => {
+    if (isExiting) {
+      setCurrentSheetName("exit");
+      currentFrameRef.current = 0;
+      frameAccumulatorRef.current = 0;
+    } else {
+      setCurrentSheetName("idle");
+    }
+  }, [isExiting]);
+
   // Keep parent position ref in sync (updated in useTick; sync ref on position state change e.g. respawn)
   useEffect(() => {
     if (positionRef) {
@@ -177,19 +229,15 @@ const PlayerAnimated = ({
   useTick((delta) => {
     const pos = displayPositionRef.current;
 
-    // Handle level-exit animation: move straight up and ignore input/shooting.
+    // Handle level-exit: position from GSAP tween; cycle frames 1–2 (flame exhaust)
     if (isExiting) {
-      const EXIT_SPEED = 10; // pixels per frame
-      const newY = pos.y - EXIT_SPEED * delta;
-      const newPos = { x: pos.x, y: newY };
-      displayPositionRef.current = newPos;
-      if (positionRef) positionRef.current = newPos;
-
-      // Once the player is fully above the top of the screen, notify parent.
-      if (newY < -TILE_SIZE && onExitComplete) {
-        onExitComplete();
+      const exitSheet = ANIMATION_SHEETS.exit;
+      frameAccumulatorRef.current += exitSheet.speed * delta;
+      if (frameAccumulatorRef.current >= 1) {
+        frameAccumulatorRef.current = 0;
+        const nextFrame = (currentFrameRef.current + 1) % exitSheet.frameSequence.length;
+        currentFrameRef.current = nextFrame;
       }
-
       setTick((t) => t + 1);
       return;
     }
@@ -227,15 +275,24 @@ const PlayerAnimated = ({
     const canShoot = bulletManagerRef?.current;
     const shootKeyPressed = consumeShootPress();
     const shootKeyHeld = isShootHeld();
+    const selected = gameState.getSelectedBulletType();
+    const bulletType =
+      selected && BULLET_TYPES[selected] ? selected : currentGun.bulletType;
+    const bulletConfig = BULLET_TYPES[bulletType];
+    const effectiveFireRate =
+      bulletConfig?.fireRateMs ?? currentGun.fireRate;
+    const effectiveAutomatic =
+      bulletConfig?.fireRateMs != null || currentGun.automatic;
+
     const now = Date.now();
-    const canFireAgain = now - lastShotTime.current >= currentGun.fireRate;
+    const canFireAgain = now - lastShotTime.current >= effectiveFireRate;
 
     if (canShoot && canFireAgain) {
-      const shouldShoot = shootKeyPressed || (currentGun.automatic && shootKeyHeld);
+      const shouldShoot = shootKeyPressed || (effectiveAutomatic && shootKeyHeld);
       if (shouldShoot) {
         lastShotTime.current = now;
-        bulletManagerRef.current.spawnBullet(pos.x, pos.y, "UP", currentGun.bulletType);
-        notifyShotFired(currentGun.fireRate);
+        bulletManagerRef.current.spawnBullet(pos.x, pos.y, "UP", bulletType);
+        notifyShotFired(effectiveFireRate);
       }
     }
 
@@ -285,7 +342,18 @@ const PlayerAnimated = ({
   });
 
 
-  const displayPosition = isExploding && deathPosition.current ? deathPosition.current : displayPositionRef.current;
+  // When exiting, sync exit position only on first frame so we don't flash at (startX, startY)
+  const displayPosition = isExiting
+    ? (() => {
+        if (!exitSyncedRef.current) {
+          exitPositionRef.current = { ...displayPositionRef.current };
+          exitSyncedRef.current = true;
+        }
+        return exitPositionRef.current;
+      })()
+    : isExploding && deathPosition.current
+      ? deathPosition.current
+      : displayPositionRef.current;
   const playerScale = PLAYER_SCALE;
 
   return (

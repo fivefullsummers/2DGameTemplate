@@ -29,8 +29,12 @@ export interface IGameStateData {
   enemiesRemaining: number;
   totalEnemies: number;
   extraLifeAwarded: boolean;
+  showExtraLifeMessage: boolean; // true only briefly after awarding, so message doesn't reappear next wave
   shotsfired: number;
   hits: number;
+  kingsModeEnabled: boolean; // Executive Order: god mode (no damage)
+  bigRedButtonEnabled: boolean; // Executive Order: show Big Red Button (clear wave)
+  selectedBulletType: string; // Current weapon (key in BULLET_TYPES)
 }
 
 /**
@@ -50,16 +54,23 @@ export class GameState {
   
   // Tracking for extra life
   private extraLifeAwarded: boolean = false;
-  
+  private showExtraLifeMessage: boolean = false;
+  private extraLifeMessageTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
   // Statistics
   private shotsfired: number = 0;
   private hits: number = 0;
-  
+
+  // Executive Orders (persisted to localStorage)
+  private kingsModeEnabled: boolean = false;
+  private bigRedButtonEnabled: boolean = false;
+
   // Callbacks for state changes
   private onStateChangeCallbacks: Array<(state: IGameStateData) => void> = [];
 
   private constructor() {
     this.loadHighScore();
+    this.loadExecutiveOrders();
   }
 
   /**
@@ -83,12 +94,14 @@ export class GameState {
    * Initialize game state for a new game
    */
   public initGame(totalEnemies: number): void {
+    this.clearExtraLifeMessageTimeout();
     this.score = 0;
     this.lives = GAME_CONSTANTS.STARTING_LIVES;
     this.wave = GAME_CONSTANTS.STARTING_WAVE;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
     this.extraLifeAwarded = false;
+    this.showExtraLifeMessage = false;
     this.shotsfired = 0;
     this.hits = 0;
     this.notifyStateChange();
@@ -98,6 +111,8 @@ export class GameState {
    * Initialize a new wave
    */
   public initWave(totalEnemies: number): void {
+    this.clearExtraLifeMessageTimeout();
+    this.showExtraLifeMessage = false;
     this.wave++;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
@@ -109,6 +124,8 @@ export class GameState {
    * score, or lives).
    */
   public resetCurrentWave(totalEnemies: number): void {
+    this.clearExtraLifeMessageTimeout();
+    this.showExtraLifeMessage = false;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
     this.notifyStateChange();
@@ -122,11 +139,18 @@ export class GameState {
     this.score += points;
     
     // Check for extra life threshold
-    if (!this.extraLifeAwarded && 
-        previousScore < GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD && 
+    if (!this.extraLifeAwarded &&
+        previousScore < GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD &&
         this.score >= GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD) {
       this.addLife();
       this.extraLifeAwarded = true;
+      this.showExtraLifeMessage = true;
+      this.clearExtraLifeMessageTimeout();
+      this.extraLifeMessageTimeoutId = setTimeout(() => {
+        this.extraLifeMessageTimeoutId = null;
+        this.showExtraLifeMessage = false;
+        this.notifyStateChange();
+      }, 2500); // Match HUD animation duration
     }
     
     // Update high score if needed
@@ -225,9 +249,20 @@ export class GameState {
       enemiesRemaining: this.enemiesRemaining,
       totalEnemies: this.totalEnemies,
       extraLifeAwarded: this.extraLifeAwarded,
+      showExtraLifeMessage: this.showExtraLifeMessage,
       shotsfired: this.shotsfired,
       hits: this.hits,
+      kingsModeEnabled: this.kingsModeEnabled,
+      bigRedButtonEnabled: this.bigRedButtonEnabled,
+      selectedBulletType: this.selectedBulletType,
     };
+  }
+
+  private clearExtraLifeMessageTimeout(): void {
+    if (this.extraLifeMessageTimeoutId !== null) {
+      clearTimeout(this.extraLifeMessageTimeoutId);
+      this.extraLifeMessageTimeoutId = null;
+    }
   }
 
   /**
@@ -251,12 +286,110 @@ export class GameState {
     this.onStateChangeCallbacks.forEach((callback) => callback(state));
   }
 
+  private static readonly STORAGE_KEY_HIGH_SCORE = 'spaceInvaders_highScore';
+  private static readonly STORAGE_KEY_KINGS_MODE = 'spaceInvaders_kingsMode';
+  private static readonly STORAGE_KEY_BIG_RED_BUTTON = 'spaceInvaders_bigRedButton';
+  private static readonly STORAGE_KEY_SELECTED_BULLET = 'spaceInvaders_selectedBulletType';
+
+  /** Selected weapon (bullet type key) for Executive Orders dropdown; persists. */
+  private selectedBulletType: string = 'basic';
+
+  /**
+   * Load Executive Orders flags from localStorage
+   */
+  private loadExecutiveOrders(): void {
+    try {
+      const savedKings = localStorage.getItem(GameState.STORAGE_KEY_KINGS_MODE);
+      if (savedKings !== null) {
+        this.kingsModeEnabled = savedKings === 'true';
+      }
+      const savedBigRed = localStorage.getItem(GameState.STORAGE_KEY_BIG_RED_BUTTON);
+      if (savedBigRed !== null) {
+        this.bigRedButtonEnabled = savedBigRed === 'true';
+      }
+      const savedBullet = localStorage.getItem(GameState.STORAGE_KEY_SELECTED_BULLET);
+      if (savedBullet !== null) {
+        this.selectedBulletType = savedBullet;
+      }
+    } catch (error) {
+      console.warn('Failed to load Executive Orders:', error);
+    }
+  }
+
+  /**
+   * Save King's Mode to localStorage
+   */
+  private saveKingsMode(): void {
+    try {
+      localStorage.setItem(GameState.STORAGE_KEY_KINGS_MODE, this.kingsModeEnabled.toString());
+    } catch (error) {
+      console.warn('Failed to save King\'s Mode:', error);
+    }
+  }
+
+  private saveSelectedBulletType(): void {
+    try {
+      localStorage.setItem(GameState.STORAGE_KEY_SELECTED_BULLET, this.selectedBulletType);
+    } catch (error) {
+      console.warn('Failed to save selected bullet type:', error);
+    }
+  }
+
+  /**
+   * Get whether King's Mode (god mode) is enabled.
+   */
+  public getKingsMode(): boolean {
+    return this.kingsModeEnabled;
+  }
+
+  /**
+   * Set King's Mode (god mode). Persists to localStorage.
+   */
+  public setKingsMode(enabled: boolean): void {
+    if (this.kingsModeEnabled === enabled) return;
+    this.kingsModeEnabled = enabled;
+    this.saveKingsMode();
+    this.notifyStateChange();
+  }
+
+  public getBigRedButtonEnabled(): boolean {
+    return this.bigRedButtonEnabled;
+  }
+
+  public setBigRedButtonEnabled(enabled: boolean): void {
+    if (this.bigRedButtonEnabled === enabled) return;
+    this.bigRedButtonEnabled = enabled;
+    try {
+      localStorage.setItem(GameState.STORAGE_KEY_BIG_RED_BUTTON, enabled.toString());
+    } catch (error) {
+      console.warn('Failed to save Big Red Button:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get selected weapon (bullet type key from BULLET_TYPES).
+   */
+  public getSelectedBulletType(): string {
+    return this.selectedBulletType;
+  }
+
+  /**
+   * Set selected weapon. Persists to localStorage.
+   */
+  public setSelectedBulletType(bulletType: string): void {
+    if (this.selectedBulletType === bulletType) return;
+    this.selectedBulletType = bulletType;
+    this.saveSelectedBulletType();
+    this.notifyStateChange();
+  }
+
   /**
    * Load high score from localStorage
    */
   private loadHighScore(): void {
     try {
-      const saved = localStorage.getItem('spaceInvaders_highScore');
+      const saved = localStorage.getItem(GameState.STORAGE_KEY_HIGH_SCORE);
       if (saved) {
         this.highScore = parseInt(saved, 10);
       }
@@ -270,7 +403,7 @@ export class GameState {
    */
   private saveHighScore(): void {
     try {
-      localStorage.setItem('spaceInvaders_highScore', this.highScore.toString());
+      localStorage.setItem(GameState.STORAGE_KEY_HIGH_SCORE, this.highScore.toString());
     } catch (error) {
       console.warn('Failed to save high score:', error);
     }
@@ -282,7 +415,7 @@ export class GameState {
   public resetHighScore(): void {
     this.highScore = 0;
     try {
-      localStorage.removeItem('spaceInvaders_highScore');
+      localStorage.removeItem(GameState.STORAGE_KEY_HIGH_SCORE);
     } catch (error) {
       console.warn('Failed to reset high score:', error);
     }

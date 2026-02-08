@@ -312,7 +312,10 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
             -Infinity
           );
           if (bottomMostY >= PLAYER_START_Y) {
-            gameState.triggerGameOver();
+            // King's Mode (Executive Order): don't game over when enemies reach player line
+            if (!gameState.getKingsMode()) {
+              gameState.triggerGameOver();
+            }
             return;
           }
           setDirection((prev) => (prev === 1 ? -1 : 1));

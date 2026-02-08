@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Experience from "./components/Experience"
 import LoadingScreen from "./components/LoadingScreen"
 import StartScreen from "./components/StartScreen"
+import OptionsScreen from "./components/OptionsScreen"
+import ExecutiveOrdersScreen from "./components/ExecutiveOrdersScreen"
 import GameOverScreen from "./components/GameOverScreen"
 import LevelCompleteScreen from "./components/LevelCompleteScreen.tsx"
 import { useAssetLoader } from "./hooks/useAssetLoader"
 import { GAME_CONSTANTS, gameState } from "./utils/GameState"
+import { applyStoredSoundPreference } from "./utils/soundSettings"
 
-type GameState = 'menu' | 'playing' | 'gameOver' | 'levelComplete';
+type GameState = 'menu' | 'options' | 'executiveOrders' | 'playing' | 'gameOver' | 'levelComplete';
 
 export const App = () => {
   const { isLoading, progress, currentAsset, error } = useAssetLoader();
@@ -56,14 +59,49 @@ export const App = () => {
     gameState.initGame(GAME_CONSTANTS.TOTAL_ENEMIES);
     setCurrentGameState('menu');
   };
-  
-  // const isLoadingTest = true;
+
+  const handleOpenOptions = () => {
+    setCurrentGameState('options');
+  };
+
+  const handleOptionsBack = () => {
+    setCurrentGameState('menu');
+  };
+
+  const handleOpenExecutiveOrders = () => {
+    setCurrentGameState('executiveOrders');
+  };
+
+  const handleExecutiveOrdersBack = () => {
+    setCurrentGameState('options');
+  };
+
+  // Apply stored sound preference once assets (and sound) are ready
+  useEffect(() => {
+    if (!isLoading) {
+      applyStoredSoundPreference();
+    }
+  }, [isLoading]);
+
   if (isLoading) {
     return <LoadingScreen progress={progress} currentAsset={currentAsset} error={error} />;
   }
 
   if (currentGameState === 'menu') {
-    return <StartScreen onStartGame={handleStartGame} />;
+    return <StartScreen onStartGame={handleStartGame} onOpenOptions={handleOpenOptions} />;
+  }
+
+  if (currentGameState === 'options') {
+    return (
+      <OptionsScreen
+        onBack={handleOptionsBack}
+        onOpenExecutiveOrders={handleOpenExecutiveOrders}
+      />
+    );
+  }
+
+  if (currentGameState === 'executiveOrders') {
+    return <ExecutiveOrdersScreen onBack={handleExecutiveOrdersBack} />;
   }
 
   if (currentGameState === 'gameOver') {

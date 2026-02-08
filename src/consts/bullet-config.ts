@@ -6,18 +6,29 @@ export const BULLET_FRAME_HEIGHT = 32;
 // Asset alias for bullet sprite (loaded via AssetLoader)
 const BULLET_ASSET_ALIAS = "guns";
 
+// Match enemy bullet size (ENEMY_BULLET_SCALE = 0.05 in EnemyFormation)
+const BULLET_SCALE_SMALL = 0.05;
+
+// Sound alias for bullet fire (loaded via AssetLoader)
+const BULLET_SOUND_PLACEHOLDER = "pound-sound";
+
 // Bullet configuration interface
 export interface BulletConfig {
   name: string;
-  spriteAsset: string;     // Asset alias (not file path)
-  row: number;             // Which row in the sprite sheet
-  col: number;             // Which column in the sprite sheet
-  speed: number;           // Pixels per frame
-  damage: number;          // Damage dealt
-  frameWidth: number;      // Width of sprite frame
-  frameHeight: number;     // Height of sprite frame
-  scale: number;           // Scale of the bullet sprite
-  lifetime: number;        // Max lifetime in milliseconds (0 = unlimited)
+  spriteAsset: string;
+  row: number;
+  col: number;
+  speed: number;
+  damage: number;
+  frameWidth: number;
+  frameHeight: number;
+  scale: number;
+  lifetime: number;
+  /** Max instances of this bullet type on screen at once */
+  maxOnScreen: number;
+  /** When set, overrides gun fire rate (ms between shots) for spray-style weapons */
+  fireRateMs?: number;
+  soundId?: string;
 }
 
 // Predefined bullet types - easily configurable
@@ -27,50 +38,87 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
   basic: {
     name: "Basic Bullet",
     spriteAsset: BULLET_ASSET_ALIAS,
-    row: 0,                // Row 0
-    col: 0,                // Col 0
-    speed: 5,              // 5 pixels per frame
+    row: 0,
+    col: 0,
+    speed: 5,
     damage: 10,
     frameWidth: BULLET_FRAME_WIDTH,
     frameHeight: BULLET_FRAME_HEIGHT,
-    scale: 0.05,           // Small size for shot.png
-    lifetime: 0,           // Unlimited - bullets travel until hitting a wall
+    scale: BULLET_SCALE_SMALL,
+    lifetime: 0,
+    maxOnScreen: 1,
+    soundId: BULLET_SOUND_PLACEHOLDER,
   },
   fast: {
     name: "Fast Bullet",
     spriteAsset: BULLET_ASSET_ALIAS,
-    row: 0,                // Row 0
-    col: 0,                // Same sprite, different properties
-    speed: 8,              // Faster
+    row: 0,
+    col: 0,
+    speed: 8,
     damage: 8,
     frameWidth: BULLET_FRAME_WIDTH,
     frameHeight: BULLET_FRAME_HEIGHT,
-    scale: 0.05,           // Smaller and faster
-    lifetime: 0,           // Unlimited - bullets travel until hitting a wall
+    scale: BULLET_SCALE_SMALL,
+    lifetime: 0,
+    maxOnScreen: 5,
+    soundId: BULLET_SOUND_PLACEHOLDER,
   },
   heavy: {
     name: "Heavy Bullet",
     spriteAsset: BULLET_ASSET_ALIAS,
-    row: 0,                // Row 0
-    col: 0,                // Same sprite, different properties
-    speed: 3,              // Slower
-    damage: 25,            // More damage
+    row: 0,
+    col: 0,
+    speed: 3,
+    damage: 25,
     frameWidth: BULLET_FRAME_WIDTH,
     frameHeight: BULLET_FRAME_HEIGHT,
-    scale: 0.20,           // Larger but still reasonable
+    scale: BULLET_SCALE_SMALL,
     lifetime: 3000,
+    maxOnScreen: 1,
+    soundId: BULLET_SOUND_PLACEHOLDER,
   },
   spaceInvadersBullet: {
     name: "Space Invaders Bullet",
     spriteAsset: BULLET_ASSET_ALIAS,
     row: 0,
     col: 0,
-    speed: 6,              // Medium-fast (Space Invaders bullets were visible but fast)
-    damage: 100,           // One-hit kill
+    speed: 6,
+    damage: 100,
     frameWidth: BULLET_FRAME_WIDTH,
     frameHeight: BULLET_FRAME_HEIGHT,
-    scale: 0.05,           // Small for Space Invaders style
-    lifetime: 0,           // Unlimited - travels until hitting something
+    scale: BULLET_SCALE_SMALL,
+    lifetime: 0,
+    maxOnScreen: 1,
+    soundId: BULLET_SOUND_PLACEHOLDER,
+  },
+  spreader: {
+    name: "Spreader",
+    spriteAsset: BULLET_ASSET_ALIAS,
+    row: 0,
+    col: 0,
+    speed: 6,
+    damage: 100,
+    frameWidth: BULLET_FRAME_WIDTH,
+    frameHeight: BULLET_FRAME_HEIGHT,
+    scale: BULLET_SCALE_SMALL,
+    lifetime: 0,
+    maxOnScreen: 1,
+    soundId: BULLET_SOUND_PLACEHOLDER,
+  },
+  heavyMachineGun: {
+    name: "Heavy Machine Gun",
+    spriteAsset: BULLET_ASSET_ALIAS,
+    row: 0,
+    col: 0,
+    speed: 7,
+    damage: 6,
+    frameWidth: BULLET_FRAME_WIDTH,
+    frameHeight: BULLET_FRAME_HEIGHT,
+    scale: BULLET_SCALE_SMALL,
+    lifetime: 0,
+    maxOnScreen: 500,
+    fireRateMs: 40,
+    soundId: BULLET_SOUND_PLACEHOLDER,
   },
 };
 
@@ -120,7 +168,20 @@ export const GUN_TYPES: Record<string, GunConfig> = {
     fireRate: 300,         // 300ms cooldown shown in UI
     automatic: false,    // one press = one shot
   },
+  // Spreader: one shot kills center enemy then wave of neighbors by radius
+  spreader: {
+    name: "Spreader",
+    bulletType: "spreader",
+    fireRate: 0,
+    automatic: false,
+  },
 };
 
 // Default gun type
 export const DEFAULT_GUN_TYPE = "Machine Gun";
+
+// Spreader gun: explosive wave by grid radius (Chebyshev distance)
+// spread_radius 1 = center + ring 1 (up to 8 neighbors), 2 = + ring 2 (up to 16 more), etc.
+export const SPREADER_SPREAD_RADIUS = 2;
+// Delay in ms between each radius wave (center dies, then ring 1, then ring 2...)
+export const SPREADER_WAVE_DELAY_MS = 120;

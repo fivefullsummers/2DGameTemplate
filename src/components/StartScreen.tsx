@@ -7,11 +7,13 @@ import { sound } from "@pixi/sound";
 
 interface StartScreenProps {
   onStartGame: () => void;
+  onOpenOptions: () => void;
 }
 
-const StartScreen = ({ onStartGame }: StartScreenProps) => {
+const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
   const { width, height } = useDimensions();
   const [isHovering, setIsHovering] = useState(false);
+  const [isOptionsHovering, setIsOptionsHovering] = useState(false);
   const [titleScale, setTitleScale] = useState(1 / 2);
 
   // Animate title with a pulsing effect
@@ -35,7 +37,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
   const titleStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial Black, Arial",
+        fontFamily: "Neopixel",
         fontSize: 18,
         fontWeight: "bold",
         fill: ["#ffffff", "#00ff88"], // gradient
@@ -53,7 +55,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
   const buttonStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial Black, Arial",
+        fontFamily: "Neopixel",
         fontSize: 14,
         fontWeight: "bold",
         fill: isHovering ? "#00ff88" : "#ffffff",
@@ -68,16 +70,39 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
     [isHovering]
   );
 
+  const optionsButtonStyle = useMemo(
+    () =>
+      new TextStyle({
+        fontFamily: "Neopixel",
+        fontSize: 12,
+        fontWeight: "bold",
+        fill: isOptionsHovering ? "#00ff88" : "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 3,
+        dropShadow: true,
+        dropShadowColor: "#000000",
+        dropShadowBlur: 3,
+        dropShadowAngle: Math.PI / 6,
+        dropShadowDistance: 2,
+      }),
+    [isOptionsHovering]
+  );
+
   const handleButtonClick = useCallback(() => {
-    // Play explosion sound
     const explosionSfx = sound.find("explosion-sound");
     if (explosionSfx) {
       explosionSfx.play({ volume: 0.5 });
     }
-
-    // Start the game
     onStartGame();
   }, [onStartGame]);
+
+  const handleOptionsClick = useCallback(() => {
+    const explosionSfx = sound.find("explosion-sound");
+    if (explosionSfx) {
+      explosionSfx.play({ volume: 0.3 });
+    }
+    onOpenOptions();
+  }, [onOpenOptions]);
 
   return (
     <Stage width={width} height={height}>
@@ -109,6 +134,24 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
           anchor={0.5}
           style={buttonStyle}
           scale={{ x: isHovering ? 1.1 : 1, y: isHovering ? 1.1 : 1 }}
+        />
+      </Container>
+
+      {/* Options Button */}
+      <Container
+        x={width / 2}
+        y={height / 2 + 120}
+        eventMode="static"
+        cursor="pointer"
+        pointerdown={handleOptionsClick}
+        pointerover={() => setIsOptionsHovering(true)}
+        pointerout={() => setIsOptionsHovering(false)}
+      >
+        <Text
+          text="OPTIONS"
+          anchor={0.5}
+          style={optionsButtonStyle}
+          scale={{ x: isOptionsHovering ? 1.1 : 1, y: isOptionsHovering ? 1.1 : 1 }}
         />
       </Container>
     </Stage>

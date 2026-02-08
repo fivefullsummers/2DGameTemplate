@@ -19,7 +19,16 @@ export const OFFSET_X = 0;
 export const OFFSET_Y = TILE_SIZE / 2;
 
 // Collision constants
-export const ENEMY_COLLISION_MULTIPLIER = 10.0; // Makes enemy hitbox 5x larger than visual sprite for better gameplay
+export const ENEMY_COLLISION_MULTIPLIER = 10.0; // Legacy / other uses
+/** Radius (px) for player bullet vs enemy hit. Used in BulletManager and debug UI (press C). */
+export const ENEMY_BULLET_HIT_RADIUS = 32;
+
+/** Player bullet vs enemy bullet: count as hit when centers are within this distance (px). */
+export const BULLET_VS_BULLET_HIT_RADIUS = 28;
+/** When player bullet is within this distance (px) of an enemy bullet, nudge it toward the enemy bullet. */
+export const BULLET_ATTRACTION_RADIUS = 56;
+/** How fast (px per frame) to pull player bullet toward nearby enemy bullet. */
+export const BULLET_ATTRACTION_STRENGTH = 2.8;
 
 // Global mobile / desktop detection helpers so we can keep a single
 // definition and reuse it across the game.

@@ -1,5 +1,5 @@
 import { Container, useTick } from "@pixi/react";
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
 import * as PIXI from "pixi.js";
 import { sound } from "@pixi/sound";
 import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_START_Y } from "../consts/tuning-config";
@@ -32,6 +32,10 @@ interface EnemyData {
   isExploding?: boolean; // Track if enemy is playing explosion animation
 }
 
+export interface EnemyFormationRef {
+  removeEnemyBullet: (id: string) => void;
+}
+
 interface EnemyFormationProps {
   enemies: EnemyData[];
   /** Enemy type id for this wave (determines sprite, bullet, sound). */
@@ -39,6 +43,8 @@ interface EnemyFormationProps {
   onEnemyRemove: (enemyId: string) => void;
   playerPositionRef?: React.RefObject<{ x: number; y: number }>;
   onPlayerHit?: () => void;
+  /** Optional ref to sync current enemy bullet positions (id -> {x,y}) for player bullet collision. */
+  enemyBulletPositionsRef?: React.RefObject<Map<string, { x: number; y: number }>>;
 }
 
 interface EnemyBulletData {
@@ -47,13 +53,14 @@ interface EnemyBulletData {
   y: number;
 }
 
-const EnemyFormation = ({
+const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(function EnemyFormation({
   enemies,
   enemyTypeId = DEFAULT_ENEMY_TYPE_ID,
   onEnemyRemove,
   playerPositionRef,
   onPlayerHit,
-}: EnemyFormationProps) => {
+  enemyBulletPositionsRef,
+}, ref) {
   const enemyTypeConfig = useMemo(
     () => getEnemyTypeConfig(enemyTypeId) ?? getEnemyTypeConfig(DEFAULT_ENEMY_TYPE_ID)!,
     [enemyTypeId]
@@ -80,6 +87,20 @@ const EnemyFormation = ({
   // Track explosion animation state
   const explosionState = useRef<Map<string, { frameIndex: number; frameAccumulator: number }>>(new Map());
   
+  const removeEnemyBullet = useCallback((id: string) => {
+    setEnemyBullets((prev) => prev.filter((b) => b.id !== id));
+    bulletPositionsRef.current.delete(id);
+    const container = containerRef.current;
+    const sprite = bulletSpriteMapRef.current.get(id);
+    if (sprite && container) {
+      container.removeChild(sprite);
+      sprite.destroy();
+      bulletSpriteMapRef.current.delete(id);
+    }
+  }, []);
+
+  useImperativeHandle(ref, () => ({ removeEnemyBullet }), [removeEnemyBullet]);
+
   // Initialize animation state for new enemies
   enemies.forEach((enemy) => {
     if (!enemyAnimState.current.has(enemy.id)) {
@@ -412,6 +433,16 @@ const EnemyFormation = ({
       }
     });
 
+    // Sync enemy bullet positions for player bullet collision (powerup spawn)
+    if (enemyBulletPositionsRef?.current) {
+      enemyBulletPositionsRef.current.clear();
+      enemyBullets.forEach((bullet) => {
+        if (idsToRemove.has(bullet.id)) return;
+        const pos = bulletPositionsRef.current.get(bullet.id) ?? { x: bullet.x, y: bullet.y };
+        enemyBulletPositionsRef.current!.set(bullet.id, { ...pos });
+      });
+    }
+
     if (idsToRemove.size > 0) {
       idsToRemove.forEach((id) => {
         bulletPositionsRef.current.delete(id);
@@ -561,6 +592,8 @@ const EnemyFormation = ({
 
   // Single container: all enemies and bullets are updated imperatively in useTick (no React re-renders)
   return <Container ref={containerRef} />;
-};
+});
+
+EnemyFormation.displayName = "EnemyFormation";
 
 export default EnemyFormation;

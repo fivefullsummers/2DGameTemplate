@@ -319,6 +319,7 @@ const PlayerAnimated = ({
         lastShotTime.current = now;
         bulletManagerRef.current.spawnBullet(pos.x, pos.y, "UP", bulletType);
         notifyShotFired(effectiveFireRate);
+        gameState.clearPowerupOverride(); // Testing: powerup ends when you shoot
       }
     }
 

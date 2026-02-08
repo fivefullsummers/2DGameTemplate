@@ -1,14 +1,22 @@
 import { Container, Stage, useTick } from "@pixi/react";
-import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER, GAME_WIDTH, isMobile } from "../consts/game-world";
+import {
+  TILE_SIZE,
+  ENEMY_BULLET_HIT_RADIUS,
+  BULLET_VS_BULLET_HIT_RADIUS,
+  BULLET_ATTRACTION_RADIUS,
+  GAME_WIDTH,
+  isMobile,
+} from "../consts/game-world";
 import useDimensions from "../hooks/useDimensions";
 
 // import HeroMouse from "./HeroMouse";
 import PlayerAnimated, { PlayerRef } from "./PlayerAnimated";
-import EnemyFormation from "./EnemyFormation";
+import EnemyFormation, { EnemyFormationRef } from "./EnemyFormation";
 import CollisionDebug from "./CollisionDebug";
 import EntityCollisionDebug from "./EntityCollisionDebug";
 import CollisionInfo from "./CollisionInfo";
 import BulletManager, { BulletManagerRef } from "./BulletManager";
+import Powerup, { PowerupData, POWERUP_ANIMATION_SPEED } from "./Powerup";
 import HUD from "./HUD";
 import { PointerEvent, useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { IPosition } from "../types/common";
@@ -18,7 +26,14 @@ import { sound } from "@pixi/sound";
 import { getEnemyPositions } from "../consts/enemies-map";
 import { gameState } from "../utils/GameState";
 import { DEFAULT_ENEMY_TYPE_ID } from "../consts/enemy-types";
-import { BULLET_TYPES, SPREADER_SPREAD_RADIUS, SPREADER_WAVE_DELAY_MS } from "../consts/bullet-config";
+import {
+  BULLET_TYPES,
+  SPREADER_SPREAD_RADIUS,
+  SPREADER_WAVE_DELAY_MS,
+  POWERUP_GUN_BULLET_TYPES,
+  POWERUP_FRAME_COUNT,
+  POWERUP_SPRITE_FRAME_OFFSET,
+} from "../consts/bullet-config";
 import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 import PlaneBackground from "./PlaneBackground";
 import MobileControlsBar from "./MobileControlsBar";
@@ -26,6 +41,20 @@ import MobileControlsBar from "./MobileControlsBar";
 const SHAKE_AMPLITUDE_PX = 3;
 const SHAKE_SPREADER_AMPLITUDE_PX = 7;
 const SHAKE_DURATION_MS = 100;
+/** Long duration for testing: powerup stays until you shoot (cleared in PlayerAnimated on fire). */
+const POWERUP_DURATION_MS = 999999;
+const POWERUP_COLLISION_RADIUS = 14;
+/** Collect when powerup is within this distance of player (snap = meets player). */
+const POWERUP_COLLECT_RADIUS = 20;
+/** Zip-to-player: base lerp per frame when far; adds more as we get close (exponential zip). */
+const POWERUP_ZIP_BASE_LERP = 0.02;
+const POWERUP_ZIP_NEAR_LERP = 0.24;
+const POWERUP_ZIP_DIST_REF = 100;
+const POWERUP_ZIP_EXPONENT = 1.8;
+/** Scale: max when far, min when at player. */
+const POWERUP_SCALE_MAX = 0.2;
+const POWERUP_SCALE_MIN = 0.06;
+const POWERUP_SCALE_DIST_REF = 90;
 
 type ShakeParams = { start: number; duration: number; amplitude: number };
 
@@ -52,6 +81,87 @@ const ScreenShakeUpdater = ({
     } else {
       wrapper.style.transform = "translate(0, 0)";
     }
+  });
+  return <Container />;
+};
+
+/** Runs inside Stage; zips powerups toward player (tracks player), exponential zip, shrinking scale. */
+const PowerupUpdater = ({
+  powerups,
+  setPowerups,
+  playerPositionRef,
+  powerupPositionsRef,
+}: {
+  powerups: PowerupData[];
+  setPowerups: React.Dispatch<React.SetStateAction<PowerupData[]>>;
+  playerPositionRef: React.RefObject<IPosition>;
+  powerupPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>;
+}) => {
+  const accumulatorRef = useRef(0);
+  useTick((delta) => {
+    if (powerups.length === 0) return;
+    const player = playerPositionRef.current;
+    const normDelta = Math.min(delta / 2, 2);
+
+    accumulatorRef.current += POWERUP_ANIMATION_SPEED * normDelta;
+    const advanceFrame = accumulatorRef.current >= 1;
+    if (advanceFrame) accumulatorRef.current = 0;
+
+    const next: PowerupData[] = [];
+    const toRemove: string[] = [];
+
+    for (const p of powerups) {
+      const newFrameIndex = advanceFrame
+        ? (p.frameIndex + 1) % POWERUP_FRAME_COUNT
+        : p.frameIndex;
+
+      if (!player) {
+        next.push({ ...p, frameIndex: newFrameIndex, scale: p.scale ?? POWERUP_SCALE_MAX });
+        continue;
+      }
+
+      const dx = player.x - p.x;
+      const dy = player.y - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < POWERUP_COLLECT_RADIUS) {
+        toRemove.push(p.id);
+        const bulletType = POWERUP_GUN_BULLET_TYPES[p.frameIndex];
+        if (bulletType) gameState.setPowerupBulletType(bulletType, POWERUP_DURATION_MS);
+        continue;
+      }
+
+      const invDist = dist > 0 ? 1 / dist : 0;
+      const t = Math.min(1, dist / POWERUP_ZIP_DIST_REF);
+      const zipFactor = 1 - Math.pow(t, POWERUP_ZIP_EXPONENT);
+      const lerp = (POWERUP_ZIP_BASE_LERP + POWERUP_ZIP_NEAR_LERP * zipFactor) * normDelta;
+      const move = Math.min(lerp, 1) * dist;
+      const newX = p.x + dx * invDist * move;
+      const newY = p.y + dy * invDist * move;
+
+      const newDist = Math.sqrt((player.x - newX) ** 2 + (player.y - newY) ** 2);
+      if (newDist < POWERUP_COLLECT_RADIUS) {
+        toRemove.push(p.id);
+        const bulletType = POWERUP_GUN_BULLET_TYPES[newFrameIndex];
+        if (bulletType) gameState.setPowerupBulletType(bulletType, POWERUP_DURATION_MS);
+        continue;
+      }
+
+      const scaleT = Math.min(1, newDist / POWERUP_SCALE_DIST_REF);
+      const scale = POWERUP_SCALE_MIN + (POWERUP_SCALE_MAX - POWERUP_SCALE_MIN) * scaleT;
+
+      next.push({
+        ...p,
+        x: newX,
+        y: newY,
+        frameIndex: newFrameIndex,
+        scale,
+      });
+    }
+
+    powerupPositionsRef.current.clear();
+    next.forEach((p) => powerupPositionsRef.current.set(p.id, { x: p.x, y: p.y }));
+    setPowerups(next);
   });
   return <Container />;
 };
@@ -274,9 +384,30 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     );
   }, []);
 
-  // Handle bullet hit: normal single kill or spreader wave (by radius)
+  // Handle bullet hit: normal single kill, spreader wave (by radius), or line gun (domino in one row)
   const handleEnemyHit = useCallback(
     (enemyId: string, bulletType: string) => {
+      if (bulletType === "lineGun") {
+        const currentEnemies = enemiesRef.current;
+        const hitEnemy = currentEnemies.find((e) => e.id === enemyId);
+        if (!hitEnemy) return;
+        const row0 = hitEnemy.gridRow;
+        const inRow = currentEnemies
+          .filter((e) => !e.isExploding && e.gridRow === row0)
+          .sort((a, b) => a.gridCol - b.gridCol);
+        const hitIndex = inRow.findIndex((e) => e.id === enemyId);
+        const LINE_GUN_MAX_ENEMIES = 3;
+        const start = Math.max(0, hitIndex - Math.floor((LINE_GUN_MAX_ENEMIES - 1) / 2));
+        const segment = inRow.slice(start, start + LINE_GUN_MAX_ENEMIES);
+        segment.forEach((e, i) => {
+          const delay = i * SPREADER_WAVE_DELAY_MS;
+          const run = () => triggerEnemyExplosionBatch([e.id]);
+          if (delay === 0) run();
+          else spreaderTimeoutsRef.current.push(setTimeout(run, delay));
+        });
+        return;
+      }
+
       if (bulletType !== "spreader") {
         triggerEnemyExplosion(enemyId);
         return;
@@ -430,10 +561,40 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     return () => window.removeEventListener("resize", recomputeOffset);
   }, [scale]);
 
+  const handlePlayerBulletHitEnemyBullet = useCallback((x: number, y: number, enemyBulletId: string) => {
+    enemyFormationRef.current?.removeEnemyBullet(enemyBulletId);
+    if (gameState.isPowerupActive()) return;
+    setPowerups((prev) => [
+      ...prev,
+      {
+        id: `powerup-${Date.now()}-${Math.random()}`,
+        x,
+        y,
+        frameIndex: 0,
+        createdAt: Date.now(),
+        scale: POWERUP_SCALE_MAX,
+      },
+    ]);
+  }, []);
+
+  const handlePlayerBulletHitPowerup = useCallback((powerupId: string) => {
+    setPowerups((prev) => {
+      const p = prev.find((x) => x.id === powerupId);
+      if (p) {
+        const bulletType = POWERUP_GUN_BULLET_TYPES[p.frameIndex];
+        if (bulletType) gameState.setPowerupBulletType(bulletType, POWERUP_DURATION_MS);
+        return prev.filter((x) => x.id !== powerupId);
+      }
+      return prev;
+    });
+  }, []);
+
   // Handle player being hit by enemy bullet
   const handlePlayerHit = useCallback(() => {
     // King's Mode (Executive Order): god mode — no damage
     if (gameState.getKingsMode()) return;
+    // Powerup active: immune to damage for the duration of the powerup
+    if (gameState.isPowerupActive()) return;
     // Lose a life
     gameState.loseLife();
     // Trigger player death animation
@@ -444,7 +605,13 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
 
   // Pass enemy positions to BulletManager (refs are updated by enemies themselves)
   const enemyPositionsRef = useRef<Map<string, IPosition>>(new Map());
-  
+  const enemyBulletPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const enemyFormationRef = useRef<EnemyFormationRef>(null);
+
+  // Powerups spawned when player bullet hits enemy bullet
+  const [powerups, setPowerups] = useState<PowerupData[]>([]);
+  const powerupPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+
   useEffect(() => {
     // Create map of enemy ID to position ref
     const positionsMap = new Map<string, IPosition>();
@@ -456,8 +623,8 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     enemyPositionsRef.current = positionsMap;
   }, [enemies]);
 
-  // Calculate collision radii for display
-  const ENEMY_RADIUS = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2;
+  // Enemy radius for player-bullet hit (and debug UI when pressing C)
+  const enemyBulletHitRadius = ENEMY_BULLET_HIT_RADIUS;
 
   // For desktop, horizontally center the scaled game world within the
   // full-screen Stage without changing any in-world coordinates.
@@ -495,7 +662,9 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
       <CollisionInfo
         isVisible={showCollisionDebug}
         playerRadius={PLAYER_COLLISION_RADIUS}
-        enemyRadius={ENEMY_RADIUS}
+        enemyRadius={enemyBulletHitRadius}
+        bulletVsBulletHitRadius={BULLET_VS_BULLET_HIT_RADIUS}
+        bulletAttractionRadius={BULLET_ATTRACTION_RADIUS}
       />
       <div
         ref={stageWrapperRef}
@@ -511,6 +680,10 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
             ref={bulletManagerRef}
             enemyPositionsRef={enemyPositionsRef}
             onEnemyHit={handleEnemyHit}
+            enemyBulletPositionsRef={enemyBulletPositionsRef}
+            onPlayerBulletHitEnemyBullet={handlePlayerBulletHitEnemyBullet}
+            powerupPositionsRef={powerupPositionsRef}
+            onPlayerBulletHitPowerup={handlePlayerBulletHitPowerup}
           />
           {/* <HeroMouse onClickMove={onClickMove} /> */}
           <PlayerAnimated
@@ -527,17 +700,37 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           />
           {/* Enemies in Space Invaders formation (all move together) */}
           <EnemyFormation
+            ref={enemyFormationRef}
             enemies={enemies}
             enemyTypeId={gameState.getSelectedEnemyTypeId() || DEFAULT_ENEMY_TYPE_ID}
             onEnemyRemove={removeEnemy}
             playerPositionRef={playerPositionRef}
             onPlayerHit={handlePlayerHit}
+            enemyBulletPositionsRef={enemyBulletPositionsRef}
           />
+          <PowerupUpdater
+            powerups={powerups}
+            setPowerups={setPowerups}
+            playerPositionRef={playerPositionRef}
+            powerupPositionsRef={powerupPositionsRef}
+          />
+          {powerups.map((p) => (
+            <Powerup
+              key={p.id}
+              id={p.id}
+              x={p.x}
+              y={p.y}
+              frameIndex={p.frameIndex + POWERUP_SPRITE_FRAME_OFFSET}
+              scale={p.scale ?? POWERUP_SCALE_MAX}
+              frameCount={5}
+            />
+          ))}
           {/* Entity collision boundaries visualization */}
           <EntityCollisionDebug
             isVisible={showCollisionDebug}
             playerPositionRef={playerPositionRef}
             enemies={enemies}
+            enemyRadius={enemyBulletHitRadius}
           />
         </Container>
       </Stage>

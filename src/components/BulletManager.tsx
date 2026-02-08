@@ -10,8 +10,13 @@ import {
   COLLISION_ROWS,
   COLLISION_COLS,
 } from "../consts/collision-map";
-import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
-import { ENEMY_SCALE } from "../consts/tuning-config";
+import {
+  TILE_SIZE,
+  ENEMY_BULLET_HIT_RADIUS,
+  BULLET_VS_BULLET_HIT_RADIUS,
+  BULLET_ATTRACTION_RADIUS,
+  BULLET_ATTRACTION_STRENGTH,
+} from "../consts/game-world";
 
 interface BulletData {
   id: string;
@@ -35,10 +40,16 @@ export interface BulletManagerRef {
 interface BulletManagerProps {
   enemyPositionsRef?: RefObject<Map<string, IPosition>>;
   onEnemyHit?: (enemyId: string, bulletType: string) => void;
+  /** Enemy bullet positions (id -> {x,y}) for collision; when player bullet hits one, callback is called. */
+  enemyBulletPositionsRef?: RefObject<Map<string, { x: number; y: number }>>;
+  onPlayerBulletHitEnemyBullet?: (x: number, y: number, enemyBulletId: string) => void;
+  /** Powerup positions (id -> {x,y}) for collision; when player bullet hits one, callback is called. */
+  powerupPositionsRef?: RefObject<Map<string, { x: number; y: number }>>;
+  onPlayerBulletHitPowerup?: (powerupId: string) => void;
 }
 
 const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
-  ({ enemyPositionsRef, onEnemyHit }, ref) => {
+  ({ enemyPositionsRef, onEnemyHit, enemyBulletPositionsRef, onPlayerBulletHitEnemyBullet, powerupPositionsRef, onPlayerBulletHitPowerup }, ref) => {
     const [bullets, setBullets] = useState<BulletData[]>([]);
 
     const spawnBullet = useCallback(
@@ -80,32 +91,60 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
 
       const enemyPositions = enemyPositionsRef?.current;
       const nextBullets: BulletData[] = [];
-      const enemyRadius =
-        enemyPositions && onEnemyHit
-          ? (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2
-          : 0;
+      const enemyBulletHitRadius = enemyPositions && onEnemyHit ? ENEMY_BULLET_HIT_RADIUS : 0;
 
       for (const bullet of bullets) {
-        if (bullet.config.lifetime > 0) {
-          const age = Date.now() - bullet.createdAt;
-          if (age >= bullet.config.lifetime) continue;
+        const age = Date.now() - bullet.createdAt;
+        if (bullet.config.lifetime > 0 && age >= bullet.config.lifetime) continue;
+
+        const cruiseSpeed = bullet.config.speed;
+        const mult = bullet.config.initialSpeedMultiplier ?? 1;
+        const decayMs = bullet.config.speedDecayMs ?? 0;
+        let effectiveSpeed = cruiseSpeed;
+        if (mult > 1 && decayMs > 0) {
+          const t = Math.exp(-age / decayMs);
+          effectiveSpeed = cruiseSpeed * (1 + (mult - 1) * t);
         }
 
         let newX = bullet.x;
         let newY = bullet.y;
         switch (bullet.direction) {
           case "UP":
-            newY -= bullet.config.speed * delta;
+            newY -= effectiveSpeed * delta;
             break;
           case "DOWN":
-            newY += bullet.config.speed * delta;
+            newY += effectiveSpeed * delta;
             break;
           case "LEFT":
-            newX -= bullet.config.speed * delta;
+            newX -= effectiveSpeed * delta;
             break;
           case "RIGHT":
-            newX += bullet.config.speed * delta;
+            newX += effectiveSpeed * delta;
             break;
+        }
+
+        // Attraction: when player bullet is close to an enemy bullet, nudge it toward the enemy bullet
+        const enemyBulletPositionsForAttraction = enemyBulletPositionsRef?.current;
+        if (enemyBulletPositionsForAttraction && onPlayerBulletHitEnemyBullet) {
+          let nearestDist = Infinity;
+          let nearestPos: { x: number; y: number } | null = null;
+          for (const enemyPos of enemyBulletPositionsForAttraction.values()) {
+            const dx = enemyPos.x - newX;
+            const dy = enemyPos.y - newY;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < nearestDist && d < BULLET_ATTRACTION_RADIUS && d > 0) {
+              nearestDist = d;
+              nearestPos = enemyPos;
+            }
+          }
+          if (nearestPos) {
+            const dx = nearestPos.x - newX;
+            const dy = nearestPos.y - newY;
+            const invDist = 1 / nearestDist;
+            const pull = BULLET_ATTRACTION_STRENGTH * delta;
+            newX += dx * invDist * pull;
+            newY += dy * invDist * pull;
+          }
         }
 
         const offScreenTop = newY < -TILE_SIZE;
@@ -123,14 +162,50 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
           bulletCol < COLLISION_COLS - 2;
         if (isInPlayableArea && COLLISION_MAP[bulletRow][bulletCol] === 1) continue;
 
+        // Player bullet vs enemy bullet: large hit radius + attraction = easier powerup spawn
+        const enemyBulletPositions = enemyBulletPositionsRef?.current;
+        let hitEnemyBullet = false;
+        if (enemyBulletPositions && onPlayerBulletHitEnemyBullet) {
+          for (const [enemyBulletId, enemyPos] of enemyBulletPositions.entries()) {
+            const dx = newX - enemyPos.x;
+            const dy = newY - enemyPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < BULLET_VS_BULLET_HIT_RADIUS) {
+              onPlayerBulletHitEnemyBullet(newX, newY, enemyBulletId);
+              hitEnemyBullet = true;
+              break;
+            }
+          }
+        }
+        if (hitEnemyBullet) continue;
+
+        const bulletRadius = (bullet.config.frameWidth * bullet.config.scale) / 2;
+
+        // Player bullet vs powerup: collect powerup (callback handles removal and bullet type)
+        const powerupPositions = powerupPositionsRef?.current;
+        const POWERUP_COLLISION_RADIUS = 12;
+        let hitPowerup = false;
+        if (powerupPositions && onPlayerBulletHitPowerup) {
+          for (const [powerupId, powerupPos] of powerupPositions.entries()) {
+            const dx = newX - powerupPos.x;
+            const dy = newY - powerupPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < bulletRadius + POWERUP_COLLISION_RADIUS) {
+              onPlayerBulletHitPowerup(powerupId);
+              hitPowerup = true;
+              break;
+            }
+          }
+        }
+        if (hitPowerup) continue;
+
         let hitEnemy = false;
         if (enemyPositions && onEnemyHit) {
-          const bulletRadius = (bullet.config.frameWidth * bullet.config.scale) / 2;
           for (const [enemyId, enemyPos] of enemyPositions.entries()) {
             const dx = newX - enemyPos.x;
             const dy = newY - enemyPos.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < bulletRadius + enemyRadius) {
+            if (distance < bulletRadius + enemyBulletHitRadius) {
               onEnemyHit(enemyId, bullet.bulletType);
               hitEnemy = true;
               break;

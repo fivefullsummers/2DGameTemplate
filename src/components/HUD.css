@@ -254,26 +254,26 @@
   opacity: 0.8;
 }
 
-/* Extra Life Message Specific */
-.extra-life-message {
-  border-color: #ffff00;
-  box-shadow: 0 0 30px rgba(255, 255, 0, 0.5), inset 0 0 20px rgba(255, 255, 0, 0.2);
-  animation: messageAppear 0.5s ease-out, extraLifeFadeOut 2s ease-out 1s forwards;
+/* Extra Life toast: small, left corner, animated by GSAP (float up + fade) */
+.extra-life-toast {
+  position: fixed;
+  left: 20px;
+  top: 180px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 0, 0.7);
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(255, 255, 0, 0.3);
+  pointer-events: none;
+  will-change: transform, opacity;
 }
 
-.extra-life-message .message-text {
+.extra-life-toast-text {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
   color: #ffff00;
-  text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff0080;
-}
-
-@keyframes extraLifeFadeOut {
-  0% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -60%) scale(0.8);
-  }
+  text-shadow: 0 0 8px rgba(255, 255, 0, 0.6);
 }
 
 /* Debug Info */

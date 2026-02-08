@@ -8,6 +8,7 @@ import enemyAnimatedAsset from "../assets/enemies/enemy.png";
 import enemyExplosionAsset from "../assets/enemies/enemy_explosion.png";
 import mapAsset from "../assets/back.png";
 import gunsAsset from "../assets/misc/shot.png";
+import powerupGunsAsset from "../assets/misc/guns.png";
 import explosionSound from "../assets/sounds/explosion.wav";
 import poundSound from "../assets/sounds/Pound.wav";
 import level1Music from "../assets/sounds/ymcabit.mp3";
@@ -57,6 +58,11 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     description: "Bullet/shot sprites (shot.png)",
   },
   {
+    alias: "powerup-guns",
+    src: powerupGunsAsset,
+    description: "Powerup gun spritesheet (guns.png, 5 frames)",
+  },
+  {
     alias: "explosion-sound",
     src: explosionSound,
     description: "Explosion sound effect",
@@ -92,6 +98,9 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     description: "Menu button click",
   },
 ];
+
+/** Resolved URL for powerup guns spritesheet (guns.png); use for DOM img/background, same source as Powerup. */
+export const powerupGunsUrl = powerupGunsAsset as string;
 
 /**
  * Progress callback type

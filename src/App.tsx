@@ -6,20 +6,42 @@ import OptionsScreen from "./components/OptionsScreen"
 import ExecutiveOrdersScreen from "./components/ExecutiveOrdersScreen"
 import GameOverScreen from "./components/GameOverScreen"
 import LevelCompleteScreen from "./components/LevelCompleteScreen.tsx"
+import PlayerSelectScreen from "./components/PlayerSelectScreen"
+import PreGameScreen from "./components/PreGameScreen"
 import { useAssetLoader } from "./hooks/useAssetLoader"
 import { GAME_CONSTANTS, gameState } from "./utils/GameState"
+import { ENEMY_TYPE_IDS } from "./consts/enemy-types"
 import { applyStoredSoundPreference } from "./utils/soundSettings"
 
-type GameState = 'menu' | 'options' | 'executiveOrders' | 'playing' | 'gameOver' | 'levelComplete';
+type GameState = 'menu' | 'options' | 'executiveOrders' | 'playerSelect' | 'preGame' | 'playing' | 'gameOver' | 'levelComplete';
 
 export const App = () => {
   const { isLoading, progress, currentAsset, error } = useAssetLoader();
   const [currentGameState, setCurrentGameState] = useState<GameState>('menu');
   
   const handleStartGame = () => {
-    // Initialize a fresh game for wave 1
+    setCurrentGameState('playerSelect');
+  };
+
+  const handlePlayerSelectContinue = (selectedPlayerId: string) => {
+    gameState.setSelectedPlayerId(selectedPlayerId);
+    // Level 1 = first enemy type; later can map wave/level to enemy type
+    const levelEnemyTypeId = ENEMY_TYPE_IDS[0] ?? gameState.getSelectedEnemyTypeId();
+    gameState.setSelectedEnemyTypeId(levelEnemyTypeId);
+    setCurrentGameState('preGame');
+  };
+
+  const handleBackFromPlayerSelect = () => {
+    setCurrentGameState('menu');
+  };
+
+  const handlePreGameReady = () => {
     gameState.initGame(GAME_CONSTANTS.TOTAL_ENEMIES);
     setCurrentGameState('playing');
+  };
+
+  const handleBackFromPreGame = () => {
+    setCurrentGameState('playerSelect');
   };
 
   const handleGameOver = () => {
@@ -89,6 +111,26 @@ export const App = () => {
 
   if (currentGameState === 'menu') {
     return <StartScreen onStartGame={handleStartGame} onOpenOptions={handleOpenOptions} />;
+  }
+
+  if (currentGameState === 'playerSelect') {
+    return (
+      <PlayerSelectScreen
+        onContinue={handlePlayerSelectContinue}
+        onBack={handleBackFromPlayerSelect}
+      />
+    );
+  }
+
+  if (currentGameState === 'preGame') {
+    return (
+      <PreGameScreen
+        selectedPlayerId={gameState.getSelectedPlayerId()}
+        enemyTypeId={gameState.getSelectedEnemyTypeId()}
+        onReady={handlePreGameReady}
+        onBack={handleBackFromPreGame}
+      />
+    );
   }
 
   if (currentGameState === 'options') {

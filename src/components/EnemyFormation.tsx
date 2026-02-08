@@ -1,15 +1,14 @@
 import { Container, useTick } from "@pixi/react";
 import { useState, useCallback, useRef, useMemo } from "react";
 import * as PIXI from "pixi.js";
+import { sound } from "@pixi/sound";
 import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_START_Y } from "../consts/tuning-config";
 import { TILE_SIZE, COLS } from "../consts/game-world";
 import { IPosition } from "../types/common";
-import { textureCache } from "../utils/textureCache";
-import enemyAnimatedAsset from "../assets/enemies/enemy.png";
 import { gameState } from "../utils/GameState";
+import { getEnemyTypeConfig, DEFAULT_ENEMY_TYPE_ID } from "../consts/enemy-types";
 
 const ENEMY_BULLET_SCALE = 0.05;
-const ENEMY_BULLET_TINT = 0xff0000;
 
 // Enemy animation configuration
 // Frame sequence: 0 -> 1 -> 2 -> 1 -> 0 (5-step cycle)
@@ -35,6 +34,8 @@ interface EnemyData {
 
 interface EnemyFormationProps {
   enemies: EnemyData[];
+  /** Enemy type id for this wave (determines sprite, bullet, sound). */
+  enemyTypeId?: string;
   onEnemyRemove: (enemyId: string) => void;
   playerPositionRef?: React.RefObject<{ x: number; y: number }>;
   onPlayerHit?: () => void;
@@ -46,7 +47,20 @@ interface EnemyBulletData {
   y: number;
 }
 
-const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit }: EnemyFormationProps) => {
+const EnemyFormation = ({
+  enemies,
+  enemyTypeId = DEFAULT_ENEMY_TYPE_ID,
+  onEnemyRemove,
+  playerPositionRef,
+  onPlayerHit,
+}: EnemyFormationProps) => {
+  const enemyTypeConfig = useMemo(
+    () => getEnemyTypeConfig(enemyTypeId) ?? getEnemyTypeConfig(DEFAULT_ENEMY_TYPE_ID)!,
+    [enemyTypeId]
+  );
+  const bulletTint = enemyTypeConfig.bulletTint ?? 0xff0000;
+  const enemySpriteTint = enemyTypeConfig.tint ?? 0xffffff;
+
   const [direction, setDirection] = useState<1 | -1>(1); // 1 = right, -1 = left
   const [enemyBullets, setEnemyBullets] = useState<EnemyBulletData[]>([]);
   const lastMoveTime = useRef<number>(Date.now());
@@ -164,7 +178,7 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
     return bottommost;
   }, [enemies]);
 
-  // Spawn enemy bullet
+  // Spawn enemy bullet (plays this enemy type's shoot sound)
   const spawnEnemyBullet = useCallback(() => {
     // Check bullet limit
     if (enemyBullets.length >= MAX_ENEMY_BULLETS) return;
@@ -175,6 +189,9 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
 
     // Pick random shooter
     const shooter = shooters[Math.floor(Math.random() * shooters.length)];
+
+    const shootSfx = sound.find(enemyTypeConfig.shootSoundId);
+    if (shootSfx) shootSfx.play({ volume: 0.25 });
     
     const newBullet: EnemyBulletData = {
       id: `enemy-bullet-${Date.now()}-${Math.random()}`,
@@ -184,7 +201,7 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
 
     bulletPositionsRef.current.set(newBullet.id, { x: newBullet.x, y: newBullet.y });
     setEnemyBullets((prev) => [...prev, newBullet]);
-  }, [enemyBullets.length, getBottommostEnemies]);
+  }, [enemyBullets.length, getBottommostEnemies, enemyTypeConfig.shootSoundId]);
 
   // Check if any enemy would hit the boundary
   const checkBoundary = useCallback(() => {
@@ -413,6 +430,7 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
         sprite.x = display.x;
         sprite.y = display.y;
         sprite.texture = getEnemyTexture(enemy.id);
+        sprite.tint = enemySpriteTint;
         if (!sprite.parent) container.addChild(sprite);
       });
       enemySpriteMapRef.current.forEach((sprite, id) => {
@@ -433,7 +451,7 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
             sprite = new PIXI.Sprite(bulletTexture);
             sprite.anchor.set(0.5);
             sprite.scale.set(ENEMY_BULLET_SCALE);
-            sprite.tint = ENEMY_BULLET_TINT;
+            sprite.tint = bulletTint;
             sprite.rotation = Math.PI;
             bulletSpriteMapRef.current.set(bullet.id, sprite);
           }
@@ -453,21 +471,22 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
     }
   });
 
-  // Get cached texture for enemy animation sprite sheet
+  // Get cached texture for enemy animation sprite sheet (from enemy type config)
   const enemyBaseTexture = useMemo(() => {
-    return textureCache.getTexture(enemyAnimatedAsset);
-  }, []);
+    const tex = PIXI.Assets.get(enemyTypeConfig.spriteAsset);
+    return tex ?? PIXI.Texture.EMPTY;
+  }, [enemyTypeConfig.spriteAsset]);
 
   // Get cached texture for enemy explosion sprite sheet
   const explosionBaseTexture = useMemo(() => {
-    return PIXI.Assets.get("enemy-explosion");
-  }, []);
+    return PIXI.Assets.get(enemyTypeConfig.explosionAsset);
+  }, [enemyTypeConfig.explosionAsset]);
 
   // Pre-create frame textures for enemy and explosion sheets (avoid per-frame allocations)
   const enemyFrameTextures = useMemo(() => {
     const map = new Map<number, PIXI.Texture>();
-    const base = enemyBaseTexture.baseTexture;
-    if (!base) return map;
+    const base = enemyBaseTexture?.baseTexture;
+    if (!base || base.width === 0) return map;
     const uniqueFrames = [...new Set(FRAME_SEQUENCE)];
     uniqueFrames.forEach((actualFrame) => {
       const x = actualFrame * ENEMY_FRAME_WIDTH;
@@ -496,22 +515,26 @@ const EnemyFormation = ({ enemies, onEnemyRemove, playerPositionRef, onPlayerHit
   const getEnemyTexture = useCallback(
     (enemyId: string) => {
       const animState = enemyAnimState.current.get(enemyId);
-      if (!animState) return enemyBaseTexture;
+      if (!animState || !enemyBaseTexture) return enemyBaseTexture ?? PIXI.Texture.EMPTY;
       const actualFrame = FRAME_SEQUENCE[animState.frameIndex] ?? 0;
       return enemyFrameTextures.get(actualFrame) ?? enemyBaseTexture;
     },
     [enemyBaseTexture, enemyFrameTextures]
   );
 
-  // Bullet texture for imperative enemy bullet sprites
+  // Bullet texture for imperative enemy bullet sprites (from enemy type config)
   const enemyBulletTextureRef = useRef<PIXI.Texture | null>(null);
-  if (!enemyBulletTextureRef.current) {
-    const guns = PIXI.Assets.get("guns");
+  const lastBulletAssetRef = useRef<string>("");
+  if (enemyTypeConfig.bulletSpriteAsset !== lastBulletAssetRef.current) {
+    lastBulletAssetRef.current = enemyTypeConfig.bulletSpriteAsset;
+    const guns = PIXI.Assets.get(enemyTypeConfig.bulletSpriteAsset);
     if (guns?.baseTexture?.width) {
       enemyBulletTextureRef.current = new PIXI.Texture(
         guns.baseTexture,
         new PIXI.Rectangle(0, 0, guns.baseTexture.width, guns.baseTexture.height)
       );
+    } else {
+      enemyBulletTextureRef.current = null;
     }
   }
 

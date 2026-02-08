@@ -10,6 +10,7 @@ import { GUN_TYPES, DEFAULT_GUN_TYPE, BULLET_TYPES } from "../consts/bullet-conf
 import { gameState } from "../utils/GameState";
 import { Direction, IPosition } from "../types/common";
 import { PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
+import { PLAYER_CONFIGS, DEFAULT_PLAYER_ID } from "../consts/players";
 
 // Sprite sheet configuration for cool.png
 // cool.png is 1536 width with 3 sprites horizontally
@@ -38,29 +39,32 @@ const getAssetPath = (assetAlias: string): string => {
   return assetAlias;
 };
 
-const ANIMATION_SHEETS: Record<string, AnimationSheet> = {
-  idle: {
-    asset: getAssetPath("hero-cool"),
-    frameSequence: [0, 1], // Cycle through frames 0–1
-    idleFrame: 0,          // Frame 0 is default idle pose
-    framesPerStep: 1,      // Complete quickly when transitioning
-    speed: 0.15,           // Animation speed
-  },
-  exit: {
-    asset: getAssetPath("hero-cool"),
-    frameSequence: [1, 2], // Frames 1–2: ship + big flame exhaust
-    idleFrame: null,
-    framesPerStep: 1,
-    speed: 0.2,            // Cycle speed during takeoff
-  },
-  explosion: {
-    asset: getAssetPath("hero-explosion"),
-    frameSequence: [0, 1, 2], // 3 frame explosion
-    idleFrame: null,
-    framesPerStep: 1,
-    speed: 0.15,           // Explosion animation speed
-  },
-};
+/** Build animation sheets from a player's hero and explosion assets */
+function buildAnimationSheets(heroAsset: string, explosionAsset: string): Record<string, AnimationSheet> {
+  return {
+    idle: {
+      asset: getAssetPath(heroAsset),
+      frameSequence: [0, 1],
+      idleFrame: 0,
+      framesPerStep: 1,
+      speed: 0.15,
+    },
+    exit: {
+      asset: getAssetPath(heroAsset),
+      frameSequence: [1, 2],
+      idleFrame: null,
+      framesPerStep: 1,
+      speed: 0.2,
+    },
+    explosion: {
+      asset: getAssetPath(explosionAsset),
+      frameSequence: [0, 1, 2],
+      idleFrame: null,
+      framesPerStep: 1,
+      speed: 0.15,
+    },
+  };
+}
 
 // Single row animation (no direction rows needed for this sprite)
 const ANIMATIONS = {
@@ -129,6 +133,19 @@ const PlayerAnimated = ({
   const lastShotTime = useRef(0);
   const velocityXRef = useRef(0);
 
+  // Per-player spritesheet and sounds: derive from selected player
+  const [selectedPlayerId, setSelectedPlayerId] = useState(() => gameState.getSelectedPlayerId());
+  useEffect(() => {
+    return gameState.subscribe((state) => {
+      if (state.selectedPlayerId !== selectedPlayerId) setSelectedPlayerId(state.selectedPlayerId);
+    });
+  }, [selectedPlayerId]);
+  const playerConfig = PLAYER_CONFIGS[selectedPlayerId] ?? PLAYER_CONFIGS[DEFAULT_PLAYER_ID];
+  const animationSheets = useMemo(
+    () => buildAnimationSheets(playerConfig.heroAsset, playerConfig.explosionAsset),
+    [playerConfig.heroAsset, playerConfig.explosionAsset]
+  );
+
   // Exit animation: GSAP tween for takeoff (slow start, then jets off)
   const exitPositionRef = useRef({ x: startX, y: startY });
   const exitSyncedRef = useRef(false);
@@ -180,18 +197,19 @@ const PlayerAnimated = ({
     displayPositionRef.current = { ...position };
   }, [position, positionRef]);
   
-  // Death trigger function
+  // Death trigger function (uses this player's death sound)
   const triggerDeath = useCallback(() => {
     if (isDead || isExploding) return;
-    const explosionSfx = sound.find("explosion-sound");
-    if (explosionSfx) explosionSfx.play({ volume: 0.5 });
+    const soundId = playerConfig.deathSoundId ?? "explosion-sound";
+    const deathSfx = sound.find(soundId);
+    if (deathSfx) deathSfx.play({ volume: 0.5 });
     setIsDead(true);
     setIsExploding(true);
     deathPosition.current = { ...displayPositionRef.current };
     setCurrentSheetName("explosion");
     currentFrameRef.current = 0;
     frameAccumulatorRef.current = 0;
-  }, [isDead, isExploding]);
+  }, [isDead, isExploding, playerConfig.deathSoundId]);
 
   // Expose death trigger to parent via ref
   useEffect(() => {
@@ -203,8 +221,8 @@ const PlayerAnimated = ({
   // Get current gun configuration
   const currentGun = GUN_TYPES[gunType] || GUN_TYPES[DEFAULT_GUN_TYPE];
 
-  // Get current animation sheet configuration
-  const currentSheet = ANIMATION_SHEETS[currentSheetName];
+  // Get current animation sheet configuration (from selected player)
+  const currentSheet = animationSheets[currentSheetName] ?? animationSheets.idle;
 
   // Get base texture from preloaded assets
   const cachedTexture = useMemo(() => {
@@ -231,7 +249,7 @@ const PlayerAnimated = ({
 
     // Handle level-exit: position from GSAP tween; cycle frames 1–2 (flame exhaust)
     if (isExiting) {
-      const exitSheet = ANIMATION_SHEETS.exit;
+      const exitSheet = animationSheets.exit;
       frameAccumulatorRef.current += exitSheet.speed * delta;
       if (frameAccumulatorRef.current >= 1) {
         frameAccumulatorRef.current = 0;
@@ -355,6 +373,8 @@ const PlayerAnimated = ({
       ? deathPosition.current
       : displayPositionRef.current;
   const playerScale = PLAYER_SCALE;
+  const playerId = gameState.getSelectedPlayerId();
+  const playerTint = PLAYER_CONFIGS[playerId]?.tint ?? 0xffffff;
 
   return (
     <Sprite
@@ -363,6 +383,7 @@ const PlayerAnimated = ({
       y={displayPosition.y}
       scale={playerScale}
       anchor={0.5}
+      tint={playerTint}
     />
   );
 };

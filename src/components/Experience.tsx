@@ -17,6 +17,7 @@ import { useControlsContext } from "../contexts/ControlsContext";
 import { sound } from "@pixi/sound";
 import { getEnemyPositions } from "../consts/enemies-map";
 import { gameState } from "../utils/GameState";
+import { DEFAULT_ENEMY_TYPE_ID } from "../consts/enemy-types";
 import { BULLET_TYPES, SPREADER_SPREAD_RADIUS, SPREADER_WAVE_DELAY_MS } from "../consts/bullet-config";
 import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 import PlaneBackground from "./PlaneBackground";
@@ -520,6 +521,7 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           {/* Enemies in Space Invaders formation (all move together) */}
           <EnemyFormation
             enemies={enemies}
+            enemyTypeId={gameState.getSelectedEnemyTypeId() || DEFAULT_ENEMY_TYPE_ID}
             onEnemyRemove={removeEnemy}
             playerPositionRef={playerPositionRef}
             onPlayerHit={handlePlayerHit}

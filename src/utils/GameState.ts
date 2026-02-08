@@ -3,6 +3,9 @@
  * Based on classic Space Invaders mechanics
  */
 
+import { PLAYER_CONFIGS, DEFAULT_PLAYER_ID } from "../consts/players";
+import { DEFAULT_ENEMY_TYPE_ID } from "../consts/enemy-types";
+
 // Score values from Space Invaders mechanics
 export const SCORE_VALUES = {
   ENEMY_TOP: 30,      // Top row aliens (Row 0)
@@ -35,6 +38,8 @@ export interface IGameStateData {
   kingsModeEnabled: boolean; // Executive Order: god mode (no damage)
   bigRedButtonEnabled: boolean; // Executive Order: show Big Red Button (clear wave)
   selectedBulletType: string; // Current weapon (key in BULLET_TYPES)
+  selectedPlayerId: string; // Current player (key in PLAYER_CONFIGS)
+  selectedEnemyTypeId: string; // Current enemy type for the level (key in ENEMY_TYPE_CONFIGS)
 }
 
 /**
@@ -255,6 +260,8 @@ export class GameState {
       kingsModeEnabled: this.kingsModeEnabled,
       bigRedButtonEnabled: this.bigRedButtonEnabled,
       selectedBulletType: this.selectedBulletType,
+      selectedPlayerId: this.selectedPlayerId,
+      selectedEnemyTypeId: this.selectedEnemyTypeId,
     };
   }
 
@@ -293,6 +300,12 @@ export class GameState {
 
   /** Selected weapon (bullet type key) for Executive Orders dropdown; persists. */
   private selectedBulletType: string = 'basic';
+
+  /** Selected player id (in-memory; set from player select screen). */
+  private selectedPlayerId: string = DEFAULT_PLAYER_ID;
+
+  /** Selected enemy type id for the current level (in-memory; set from pre-game/level). */
+  private selectedEnemyTypeId: string = DEFAULT_ENEMY_TYPE_ID;
 
   /**
    * Load Executive Orders flags from localStorage
@@ -381,6 +394,40 @@ export class GameState {
     if (this.selectedBulletType === bulletType) return;
     this.selectedBulletType = bulletType;
     this.saveSelectedBulletType();
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get selected player id (from player select screen).
+   */
+  public getSelectedPlayerId(): string {
+    return this.selectedPlayerId;
+  }
+
+  /**
+   * Set selected player. Also sets selectedBulletType to this player's weapon of choice.
+   */
+  public setSelectedPlayerId(playerId: string): void {
+    const config = PLAYER_CONFIGS[playerId];
+    if (!config) return;
+    this.selectedPlayerId = playerId;
+    this.selectedBulletType = config.weaponOfChoice;
+    this.saveSelectedBulletType();
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get selected enemy type id (for the current level).
+   */
+  public getSelectedEnemyTypeId(): string {
+    return this.selectedEnemyTypeId;
+  }
+
+  /**
+   * Set selected enemy type id (e.g. when entering pre-game or starting a level).
+   */
+  public setSelectedEnemyTypeId(enemyTypeId: string): void {
+    this.selectedEnemyTypeId = enemyTypeId;
     this.notifyStateChange();
   }
 

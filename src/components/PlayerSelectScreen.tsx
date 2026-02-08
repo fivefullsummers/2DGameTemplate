@@ -9,12 +9,18 @@ import { sound } from "@pixi/sound";
 import { PLAYER_CONFIGS, PLAYER_IDS, getWeaponDisplayName, DEFAULT_PLAYER_ID } from "../consts/players";
 
 const CARD_WIDTH = 160;
-const CARD_HEIGHT = 260;
+const MAX_CARD_HEIGHT = 220;
+const MIN_CARD_HEIGHT = 140;
 const CARD_GAP = 20;
 const GRID_COLS = 2;
 const FRAME_WIDTH = 512; // hero-cool is 1536/3
 /** Match in-game player idle speed (speed 0.15 => ~1/0.15 ticks per frame) */
 const CARD_ANIM_TICKS_PER_FRAME = 7;
+/** Space reserved at bottom for CONTINUE + BACK buttons */
+const BUTTONS_RESERVE = 100;
+const TITLE_TOP_RATIO = 0.055;
+const TITLE_HEIGHT = 28;
+const GAP_AFTER_TITLE = 10;
 
 interface PlayerSelectScreenProps {
   /** Called with the selected player id when user clicks CONTINUE */
@@ -22,17 +28,19 @@ interface PlayerSelectScreenProps {
   onBack?: () => void;
 }
 
-/** Single card: border + optional check, sprite, name, weapon text */
+/** Single card: border + optional check, sprite, name, weapon text. Height is dynamic for responsive layout. */
 const PlayerCard = ({
   playerId,
   isSelected,
   onSelect,
   tick,
+  cardHeight,
 }: {
   playerId: string;
   isSelected: boolean;
   onSelect: () => void;
   tick: number;
+  cardHeight: number;
 }) => {
   const config = PLAYER_CONFIGS[playerId];
   if (!config) return null;
@@ -52,29 +60,28 @@ const PlayerCard = ({
       g.clear();
       g.lineStyle(isSelected ? 3 : 1, isSelected ? 0x0088ff : 0x444444, 1);
       g.beginFill(0x1a1a1a, 0.9);
-      g.drawRoundedRect(0, 0, CARD_WIDTH, CARD_HEIGHT, 8);
+      g.drawRoundedRect(0, 0, CARD_WIDTH, cardHeight, 8);
       g.endFill();
     },
-    [isSelected]
+    [isSelected, cardHeight]
   );
 
-  // Fixed layout: sprite in top zone, text below with padding so nothing is clipped.
-  const SPRITE_ZONE_TOP = 24;
-  const SPRITE_ZONE_BOTTOM = 168;
-  const TEXT_BOTTOM_PADDING = 18;
+  // Layout proportional to cardHeight: sprite in upper ~58%, text block in lower ~42%
+  const SPRITE_ZONE_TOP = 16;
+  const SPRITE_ZONE_BOTTOM = Math.round(cardHeight * 0.58);
   const spriteZoneHeight = SPRITE_ZONE_BOTTOM - SPRITE_ZONE_TOP;
-  const scale = Math.min(0.64, spriteZoneHeight / (texture?.height ?? 400));
+  const scale = Math.min(0.6, spriteZoneHeight / (texture?.height ?? 400));
   const spriteCenterY = SPRITE_ZONE_TOP + spriteZoneHeight / 2;
-  // Text block: three lines with spacing, kept above (CARD_HEIGHT - TEXT_BOTTOM_PADDING)
-  const nameY = 192;
-  const labelY = 212;
-  const valueY = 232;
+  const textBlockTop = Math.round(cardHeight * 0.62);
+  const nameY = textBlockTop;
+  const labelY = textBlockTop + 16;
+  const valueY = textBlockTop + 32;
 
   return (
     <Container eventMode="static" cursor="pointer" pointerdown={onSelect}>
       <Graphics draw={drawCard} />
       {/* Checkbox / checkmark top-right */}
-      <Container x={CARD_WIDTH - 24} y={8}>
+      <Container x={CARD_WIDTH - 22} y={6}>
         {isSelected ? (
           <Text text="✓" style={checkStyle} anchor={0.5} x={12} y={10} />
         ) : (
@@ -224,48 +231,53 @@ const PlayerSelectContent = ({
     setSelectedId(playerId);
   }, []);
 
-  // 2x2 grid center
+  // Responsive layout: title high, then cards, then reserved button area
+  const titleY = height * TITLE_TOP_RATIO;
+  const gridTop = titleY + TITLE_HEIGHT + GAP_AFTER_TITLE;
+  const availableForGrid = height - BUTTONS_RESERVE - gridTop;
+  const cardHeight = Math.max(
+    MIN_CARD_HEIGHT,
+    Math.min(MAX_CARD_HEIGHT, Math.floor((availableForGrid - CARD_GAP) / 2))
+  );
   const gridWidth = GRID_COLS * CARD_WIDTH + (GRID_COLS - 1) * CARD_GAP;
-  const gridHeight = 2 * CARD_HEIGHT + CARD_GAP;
+  const gridHeight = 2 * cardHeight + CARD_GAP;
   const gridX = (width - gridWidth) / 2;
-  const gridY = height * 0.14;
+  const buttonsTopY = height - BUTTONS_RESERVE + 20;
+  const continueY = buttonsTopY + 24;
+  const backY = buttonsTopY + 56;
 
   return (
     <>
       <StartScreenBackground width={width} height={height} />
 
-      <Container x={width / 2} y={height * 0.12}>
+      {/* Title: separate container, placed higher */}
+      <Container x={width / 2} y={titleY + TITLE_HEIGHT / 2}>
         <Text text="CHOOSE YOUR PLAYER" anchor={0.5} style={titleStyle} />
       </Container>
 
-      {/* 2x2 grid of player cards */}
-      {PLAYER_IDS.map((playerId, index) => {
-        const col = index % GRID_COLS;
-        const row = Math.floor(index / GRID_COLS);
-        const x = gridX + col * (CARD_WIDTH + CARD_GAP);
-        const y = gridY + row * (CARD_HEIGHT + CARD_GAP);
-        return (
-          <Container key={playerId} x={x} y={y}>
-            <PlayerCard
-              playerId={playerId}
-              isSelected={selectedId === playerId}
-              onSelect={() => handleCardSelect(playerId)}
-              tick={tick}
-            />
-          </Container>
-        );
-      })}
+      {/* Cards: separate container so grid can shrink when height is limited */}
+      <Container>
+        {PLAYER_IDS.map((playerId, index) => {
+          const col = index % GRID_COLS;
+          const row = Math.floor(index / GRID_COLS);
+          const x = gridX + col * (CARD_WIDTH + CARD_GAP);
+          const y = gridTop + row * (cardHeight + CARD_GAP);
+          return (
+            <Container key={playerId} x={x} y={y}>
+              <PlayerCard
+                playerId={playerId}
+                isSelected={selectedId === playerId}
+                onSelect={() => handleCardSelect(playerId)}
+                tick={tick}
+                cardHeight={cardHeight}
+              />
+            </Container>
+          );
+        })}
+      </Container>
 
-      {/* CONTINUE button */}
-      <Container
-        x={width / 2}
-        y={height - 80}
-        eventMode="static"
-        cursor="pointer"
-        pointerdown={handleContinue}
-        pointerover={() => setHoverContinue(true)}
-        pointerout={() => setHoverContinue(false)}
-      >
+      {/* Buttons: separate container anchored to bottom so they always fit */}
+      <Container x={width / 2} y={continueY} eventMode="static" cursor="pointer" pointerdown={handleContinue} pointerover={() => setHoverContinue(true)} pointerout={() => setHoverContinue(false)}>
         <Text
           text="CONTINUE"
           anchor={0.5}
@@ -277,7 +289,7 @@ const PlayerSelectContent = ({
       {onBack && (
         <Container
           x={width / 2}
-          y={height - 40}
+          y={backY}
           eventMode="static"
           cursor="pointer"
           pointerdown={() => {

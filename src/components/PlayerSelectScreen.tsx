@@ -220,14 +220,14 @@ const PlayerSelectContent = ({
   );
 
   const handleContinue = useCallback(() => {
-    const clickSfx = sound.find("explosion-sound");
+    const clickSfx = sound.find("button-click");
     if (clickSfx) clickSfx.play({ volume: 0.4 });
     onContinue(selectedId);
   }, [onContinue, selectedId]);
 
   const handleCardSelect = useCallback((playerId: string) => {
-    const clickSfx = sound.find("explosion-sound");
-    if (clickSfx) clickSfx.play({ volume: 0.2 });
+    const clickSfx = sound.find("button-click");
+    if (clickSfx) clickSfx.play({ volume: 0.4 });
     setSelectedId(playerId);
   }, []);
 
@@ -293,8 +293,8 @@ const PlayerSelectContent = ({
           eventMode="static"
           cursor="pointer"
           pointerdown={() => {
-            const clickSfx = sound.find("explosion-sound");
-            if (clickSfx) clickSfx.play({ volume: 0.3 });
+            const clickSfx = sound.find("button-click");
+            if (clickSfx) clickSfx.play({ volume: 0.4 });
             onBack();
           }}
         >

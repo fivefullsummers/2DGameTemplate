@@ -99,7 +99,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
   useEffect(() => {
     const gameOverSfx = sound.find("explosion-sound");
     if (gameOverSfx) {
-      gameOverSfx.play({ volume: 0.7 });
+      gameOverSfx.play({ volume: 0.05 });
     }
   }, []);
 
@@ -169,10 +169,8 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
         eventMode="static"
         cursor="pointer"
         pointerdown={() => {
-          const clickSfx = sound.find("explosion-sound");
-          if (clickSfx) {
-            clickSfx.play({ volume: 0.3 });
-          }
+          const clickSfx = sound.find("button-click");
+          if (clickSfx) clickSfx.play({ volume: 0.4 });
           onPlayAgain();
         }}
         pointerover={() => setIsHoveringPlayAgain(true)}
@@ -196,10 +194,8 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
         eventMode="static"
         cursor="pointer"
         pointerdown={() => {
-          const clickSfx = sound.find("explosion-sound");
-          if (clickSfx) {
-            clickSfx.play({ volume: 0.3 });
-          }
+          const clickSfx = sound.find("button-click");
+          if (clickSfx) clickSfx.play({ volume: 0.4 });
           onMainMenu();
         }}
         pointerover={() => setIsHoveringMainMenu(true)}

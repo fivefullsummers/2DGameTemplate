@@ -115,7 +115,7 @@ const PreGameContent = ({
   }, [enemyConfig?.spriteAsset]);
 
   const handleReady = useCallback(() => {
-    const clickSfx = sound.find("explosion-sound");
+    const clickSfx = sound.find("button-click");
     if (clickSfx) clickSfx.play({ volume: 0.4 });
     onReady();
   }, [onReady]);
@@ -223,8 +223,8 @@ const PreGameContent = ({
           eventMode="static"
           cursor="pointer"
           pointerdown={() => {
-            const clickSfx = sound.find("explosion-sound");
-            if (clickSfx) clickSfx.play({ volume: 0.3 });
+            const clickSfx = sound.find("button-click");
+            if (clickSfx) clickSfx.play({ volume: 0.4 });
             onBack();
           }}
         >

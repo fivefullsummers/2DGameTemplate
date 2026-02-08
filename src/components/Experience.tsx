@@ -91,7 +91,7 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   useEffect(() => {
     const levelMusic = sound.find("level1-music");
     if (levelMusic) {
-      levelMusic.play({ loop: true, volume: 0.3 });
+      levelMusic.play({ loop: true, volume: 0.5, start: 2 }); // skip first 2 seconds of ymcabit.mp3
     }
 
     // Stop music when component unmounts
@@ -152,6 +152,9 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   useEffect(() => {
     const unsubscribe = gameState.subscribe((state) => {
       if (state.lives <= 0) {
+        // Cancel level-won exit animation if it was started (e.g. mutual kill on last enemy)
+        setIsPlayerExiting(false);
+
         // Stop level music
         const levelMusic = sound.find("level1-music");
         if (levelMusic) {
@@ -242,8 +245,8 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
 
   // Trigger explosion for one enemy (single bullet hit)
   const triggerEnemyExplosion = useCallback((enemyId: string) => {
-    const explosionSfx = sound.find("explosion-sound");
-    if (explosionSfx) explosionSfx.play({ volume: 0.5 });
+    const explosionSfx = sound.find("alien-death");
+    if (explosionSfx) explosionSfx.play({ volume: 0.25 });
     triggerScreenShake();
 
     setEnemies((prev) =>
@@ -258,8 +261,8 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   // Batch: mark multiple enemies exploding in one state update (spreader waves)
   const triggerEnemyExplosionBatch = useCallback((enemyIds: string[]) => {
     if (enemyIds.length === 0) return;
-    const explosionSfx = sound.find("explosion-sound");
-    if (explosionSfx) explosionSfx.play({ volume: 0.5 });
+    const explosionSfx = sound.find("alien-death");
+    if (explosionSfx) explosionSfx.play({ volume: 0.25 });
     triggerScreenShake(SHAKE_SPREADER_AMPLITUDE_PX);
 
     const idSet = new Set(enemyIds);
@@ -358,9 +361,13 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     }
   }, [enemies, enemyIdToRowIndex]);
 
-  // Detect wave completion and start player exit animation
+  // Detect wave completion and start player exit animation (only if player is still alive)
   useEffect(() => {
     if (!hasWaveCompleted && enemies.length === 0) {
+      // If player died on the same frame as killing the last enemy, don't trigger level won
+      if (gameState.isGameOver()) {
+        return;
+      }
       setHasWaveCompleted(true);
       setIsPlayerExiting(true);
 

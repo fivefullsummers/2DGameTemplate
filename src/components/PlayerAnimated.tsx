@@ -197,12 +197,14 @@ const PlayerAnimated = ({
     displayPositionRef.current = { ...position };
   }, [position, positionRef]);
   
-  // Death trigger function (uses this player's death sound)
+  // Death trigger function: play explosion + human death scream
   const triggerDeath = useCallback(() => {
     if (isDead || isExploding) return;
-    const soundId = playerConfig.deathSoundId ?? "explosion-sound";
-    const deathSfx = sound.find(soundId);
-    if (deathSfx) deathSfx.play({ volume: 0.5 });
+    const explosionSoundId = playerConfig.deathSoundId ?? "explosion-sound";
+    const explosionSfx = sound.find(explosionSoundId);
+    if (explosionSfx) explosionSfx.play({ volume: 0.25 });
+    const humanScreamSfx = sound.find("human-death");
+    if (humanScreamSfx) humanScreamSfx.play({ volume: 0.35 });
     setIsDead(true);
     setIsExploding(true);
     deathPosition.current = { ...displayPositionRef.current };
@@ -267,15 +269,21 @@ const PlayerAnimated = ({
         frameAccumulatorRef.current = 0;
         const nextFrame = currentFrameRef.current + 1;
         if (nextFrame >= currentSheet.frameSequence.length) {
-          setIsExploding(false);
-          setIsDead(false);
-          setPosition({ x: startX, y: startY });
-          deathPosition.current = null;
-          setCurrentSheetName("idle");
-          currentFrameRef.current = 0;
-          frameAccumulatorRef.current = 0;
-          displayPositionRef.current = { x: startX, y: startY };
-          if (positionRef) positionRef.current = { x: startX, y: startY };
+          // Only respawn if player still has lives (game over = stay dead, no respawn)
+          if (gameState.getLives() > 0) {
+            setIsExploding(false);
+            setIsDead(false);
+            setPosition({ x: startX, y: startY });
+            deathPosition.current = null;
+            setCurrentSheetName("idle");
+            currentFrameRef.current = 0;
+            frameAccumulatorRef.current = 0;
+            displayPositionRef.current = { x: startX, y: startY };
+            if (positionRef) positionRef.current = { x: startX, y: startY };
+          } else {
+            setIsExploding(false);
+            // Keep isDead true so we don't run movement; sprite stays on last explosion frame
+          }
         } else {
           currentFrameRef.current = nextFrame;
         }

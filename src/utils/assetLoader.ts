@@ -10,7 +10,11 @@ import mapAsset from "../assets/back.png";
 import gunsAsset from "../assets/misc/shot.png";
 import explosionSound from "../assets/sounds/explosion.wav";
 import poundSound from "../assets/sounds/Pound.wav";
-import level1Music from "../assets/sounds/SpaceInvaders2.mp3";
+import level1Music from "../assets/sounds/ymcabit.mp3";
+import sfxDeathscreamAlien from "../assets/sounds/sfx_deathscream_alien3.wav";
+import sfxDeathscreamHuman from "../assets/sounds/sfx_deathscream_human1.wav";
+import sfxCoin from "../assets/sounds/sfx_coin_double5.wav";
+import sfxButton from "../assets/sounds/sfx_sounds_button11.wav";
 
 /**
  * Asset manifest - defines all assets that need to be loaded
@@ -67,6 +71,26 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     src: level1Music,
     description: "Level 1 background music",
   },
+  {
+    alias: "alien-death",
+    src: sfxDeathscreamAlien,
+    description: "Enemy death scream",
+  },
+  {
+    alias: "human-death",
+    src: sfxDeathscreamHuman,
+    description: "Human death scream",
+  },
+  {
+    alias: "coin",
+    src: sfxCoin,
+    description: "Coin / start game sound",
+  },
+  {
+    alias: "button-click",
+    src: sfxButton,
+    description: "Menu button click",
+  },
 ];
 
 /**
@@ -118,6 +142,10 @@ export class AssetLoader {
           { alias: "explosion-sound", src: explosionSound },
           { alias: "pound-sound", src: poundSound },
           { alias: "level1-music", src: level1Music },
+          { alias: "alien-death", src: sfxDeathscreamAlien },
+          { alias: "human-death", src: sfxDeathscreamHuman },
+          { alias: "coin", src: sfxCoin },
+          { alias: "button-click", src: sfxButton },
         ];
         
         // Register each sound with the sound system using the source path

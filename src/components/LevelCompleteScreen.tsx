@@ -67,10 +67,8 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
   );
 
   const playClick = () => {
-    const clickSfx = sound.find("explosion-sound");
-    if (clickSfx) {
-      clickSfx.play({ volume: 0.3 });
-    }
+    const clickSfx = sound.find("button-click");
+    if (clickSfx) clickSfx.play({ volume: 0.4 });
   };
 
   return (

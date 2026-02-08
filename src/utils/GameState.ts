@@ -40,7 +40,11 @@ export interface IGameStateData {
   selectedBulletType: string; // Current weapon (key in BULLET_TYPES)
   selectedPlayerId: string; // Current player (key in PLAYER_CONFIGS)
   selectedEnemyTypeId: string; // Current enemy type for the level (key in ENEMY_TYPE_CONFIGS)
+  difficulty: GameDifficulty; // Executive Order: enemy shooting aggression (easy / medium / hard)
 }
+
+/** Difficulty level for enemy aggression (shoot rate, bullet count, bullet speed). */
+export type GameDifficulty = 'easy' | 'medium' | 'hard';
 
 /**
  * GameState singleton class
@@ -69,6 +73,7 @@ export class GameState {
   // Executive Orders (persisted to localStorage)
   private kingsModeEnabled: boolean = false;
   private bigRedButtonEnabled: boolean = false;
+  private difficulty: GameDifficulty = 'medium';
 
   // Callbacks for state changes
   private onStateChangeCallbacks: Array<(state: IGameStateData) => void> = [];
@@ -262,6 +267,7 @@ export class GameState {
       selectedBulletType: this.selectedBulletType,
       selectedPlayerId: this.selectedPlayerId,
       selectedEnemyTypeId: this.selectedEnemyTypeId,
+      difficulty: this.difficulty,
     };
   }
 
@@ -297,6 +303,7 @@ export class GameState {
   private static readonly STORAGE_KEY_KINGS_MODE = 'spaceInvaders_kingsMode';
   private static readonly STORAGE_KEY_BIG_RED_BUTTON = 'spaceInvaders_bigRedButton';
   private static readonly STORAGE_KEY_SELECTED_BULLET = 'spaceInvaders_selectedBulletType';
+  private static readonly STORAGE_KEY_DIFFICULTY = 'spaceInvaders_difficulty';
 
   /** Selected weapon (bullet type key) for Executive Orders dropdown; persists. */
   private selectedBulletType: string = 'basic';
@@ -323,6 +330,10 @@ export class GameState {
       const savedBullet = localStorage.getItem(GameState.STORAGE_KEY_SELECTED_BULLET);
       if (savedBullet !== null) {
         this.selectedBulletType = savedBullet;
+      }
+      const savedDifficulty = localStorage.getItem(GameState.STORAGE_KEY_DIFFICULTY);
+      if (savedDifficulty === 'easy' || savedDifficulty === 'medium' || savedDifficulty === 'hard') {
+        this.difficulty = savedDifficulty;
       }
     } catch (error) {
       console.warn('Failed to load Executive Orders:', error);
@@ -376,6 +387,27 @@ export class GameState {
       localStorage.setItem(GameState.STORAGE_KEY_BIG_RED_BUTTON, enabled.toString());
     } catch (error) {
       console.warn('Failed to save Big Red Button:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get difficulty (enemy shooting aggression). Used by EnemyFormation.
+   */
+  public getDifficulty(): GameDifficulty {
+    return this.difficulty;
+  }
+
+  /**
+   * Set difficulty. Persists to localStorage.
+   */
+  public setDifficulty(level: GameDifficulty): void {
+    if (this.difficulty === level) return;
+    this.difficulty = level;
+    try {
+      localStorage.setItem(GameState.STORAGE_KEY_DIFFICULTY, level);
+    } catch (error) {
+      console.warn('Failed to save difficulty:', error);
     }
     this.notifyStateChange();
   }

@@ -89,18 +89,14 @@ const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
   );
 
   const handleButtonClick = useCallback(() => {
-    const explosionSfx = sound.find("explosion-sound");
-    if (explosionSfx) {
-      explosionSfx.play({ volume: 0.5 });
-    }
+    const coinSfx = sound.find("coin");
+    if (coinSfx) coinSfx.play({ volume: 0.4 });
     onStartGame();
   }, [onStartGame]);
 
   const handleOptionsClick = useCallback(() => {
-    const explosionSfx = sound.find("explosion-sound");
-    if (explosionSfx) {
-      explosionSfx.play({ volume: 0.3 });
-    }
+    const clickSfx = sound.find("button-click");
+    if (clickSfx) clickSfx.play({ volume: 0.4 });
     onOpenOptions();
   }, [onOpenOptions]);
 

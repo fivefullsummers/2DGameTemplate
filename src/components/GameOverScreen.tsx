@@ -42,7 +42,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
   const gameOverStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial Black, Arial",
+        fontFamily: "Neopixel",
         fontSize: 20,
         fontWeight: "bold",
         fill: ["#ff0000", "#ff6666"], // red gradient
@@ -55,7 +55,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
   const highScoreStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial Black, Arial",
+        fontFamily: "Neopixel",
         fontSize: 16,
         fontWeight: "bold",
         fill: ["#ffff00", "#ffaa00"], // gold gradient
@@ -68,7 +68,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
   const statsStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial",
+        fontFamily: "Neopixel",
         fontSize: 14,
         fill: "#ffffff",
         stroke: "#000000",
@@ -80,7 +80,7 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
   const buttonStyle = useMemo(
     () => (isHovering: boolean) =>
       new TextStyle({
-        fontFamily: "Arial Black, Arial",
+        fontFamily: "Neopixel",
         fontSize: 14,
         fontWeight: "bold",
         fill: isHovering ? "#00ff88" : "#ffffff",

@@ -31,9 +31,16 @@ if (ENEMIES_MAP.length !== ROWS || ENEMIES_MAP[0].length !== COLS) {
   console.error(`Enemies map size mismatch! Expected ${ROWS}x${COLS}`);
 }
 
-// Helper function to get enemy positions from the map
-export const getEnemyPositions = (): Array<{ x: number; y: number }> => {
-  const positions: Array<{ x: number; y: number }> = [];
+export interface EnemyPosition {
+  x: number;
+  y: number;
+  row: number;
+  col: number;
+}
+
+// Helper function to get enemy positions from the map (with grid row/col for spreader)
+export const getEnemyPositions = (): EnemyPosition[] => {
+  const positions: EnemyPosition[] = [];
 
   // First pass: find horizontal extent (min/max columns that contain enemies)
   let minCol: number | null = null;
@@ -71,10 +78,10 @@ export const getEnemyPositions = (): Array<{ x: number; y: number }> => {
         // offset so the whole formation is centered on X.
         const x = col * ENEMY_SPACING_X + ENEMY_SPACING_X / 2 + centerOffsetX;
         const y = row * ENEMY_SPACING_Y + ENEMY_SPACING_Y / 2 + ENEMY_FORMATION_OFFSET_Y;
-        positions.push({ x, y });
+        positions.push({ x, y, row, col });
       }
     }
   }
-  
+
   return positions;
 };

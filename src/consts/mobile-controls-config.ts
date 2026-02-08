@@ -13,6 +13,11 @@ export const MOBILE_MOVE_BUTTON_SIZE = 60;   // px diameter of each circle
 export const MOBILE_SHOOT_BUTTON_BOTTOM = 30; // px from bottom of viewport
 export const MOBILE_SHOOT_BUTTON_SIZE = 60;   // px diameter of the circle
 
+// Big Red Button (Executive Order): between movement and shoot
+export const MOBILE_BIG_RED_BUTTON_BOTTOM = 30;
+export const MOBILE_BIG_RED_BUTTON_SIZE = 56;
+export const MOBILE_BIG_RED_BUTTON_RIGHT = 30 + MOBILE_SHOOT_BUTTON_SIZE + 18; // left of shoot
+
 // Extra vertical clearance between the TOP of the buttons area
 // and the player's Y position (in screen space).
 export const MOBILE_PLAYER_SAFE_BUFFER = 20; // px

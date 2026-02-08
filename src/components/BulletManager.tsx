@@ -19,6 +19,7 @@ interface BulletData {
   y: number;
   direction: "UP" | "DOWN" | "LEFT" | "RIGHT";
   config: BulletConfig;
+  bulletType: string; // key in BULLET_TYPES, e.g. "basic", "spreader"
   createdAt: number;
 }
 
@@ -33,12 +34,11 @@ export interface BulletManagerRef {
 
 interface BulletManagerProps {
   enemyPositionsRef?: RefObject<Map<string, IPosition>>;
-  onEnemyHit?: (enemyId: string) => void;
-  maxBullets?: number;
+  onEnemyHit?: (enemyId: string, bulletType: string) => void;
 }
 
 const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
-  ({ enemyPositionsRef, onEnemyHit, maxBullets }, ref) => {
+  ({ enemyPositionsRef, onEnemyHit }, ref) => {
     const [bullets, setBullets] = useState<BulletData[]>([]);
 
     const spawnBullet = useCallback(
@@ -48,24 +48,28 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
         direction: "UP" | "DOWN" | "LEFT" | "RIGHT",
         bulletType: string = "basic"
       ) => {
+        const config = BULLET_TYPES[bulletType];
+        if (!config) return;
+
         setBullets((prev) => {
-          if (maxBullets !== undefined && prev.length >= maxBullets) return prev;
-          const config = BULLET_TYPES[bulletType];
-          if (!config) return prev;
+          const sameTypeCount = prev.filter((b) => b.bulletType === bulletType).length;
+          if (sameTypeCount >= config.maxOnScreen) return prev;
           const newBullet: BulletData = {
             id: `bullet-${Date.now()}-${Math.random()}`,
             x,
             y,
             direction,
             config,
+            bulletType,
             createdAt: Date.now(),
           };
-          const poundSfx = sound.find("pound-sound");
-          if (poundSfx) poundSfx.play({ volume: 0.5 });
+          const soundId = config.soundId ?? "pound-sound";
+          const fireSfx = sound.find(soundId);
+          if (fireSfx) fireSfx.play({ volume: 0.5 });
           return [...prev, newBullet];
         });
       },
-      [maxBullets]
+      []
     );
 
     useImperativeHandle(ref, () => ({ spawnBullet }), [spawnBullet]);
@@ -76,6 +80,10 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
 
       const enemyPositions = enemyPositionsRef?.current;
       const nextBullets: BulletData[] = [];
+      const enemyRadius =
+        enemyPositions && onEnemyHit
+          ? (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2
+          : 0;
 
       for (const bullet of bullets) {
         if (bullet.config.lifetime > 0) {
@@ -118,13 +126,12 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
         let hitEnemy = false;
         if (enemyPositions && onEnemyHit) {
           const bulletRadius = (bullet.config.frameWidth * bullet.config.scale) / 2;
-          const enemyRadius = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2;
           for (const [enemyId, enemyPos] of enemyPositions.entries()) {
             const dx = newX - enemyPos.x;
             const dy = newY - enemyPos.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             if (distance < bulletRadius + enemyRadius) {
-              onEnemyHit(enemyId);
+              onEnemyHit(enemyId, bullet.bulletType);
               hitEnemy = true;
               break;
             }

@@ -21,7 +21,7 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
   const titleStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial Black, Arial",
+        fontFamily: "Neopixel",
         fontSize: 18,
         fontWeight: "bold",
         fill: ["#ffffff", "#00ff88"],
@@ -39,7 +39,7 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
   const statsStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial",
+        fontFamily: "Neopixel",
         fontSize: 14,
         fill: "#ffffff",
         stroke: "#000000",
@@ -51,7 +51,7 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
   const buttonStyle = useMemo(
     () =>
       new TextStyle({
-        fontFamily: "Arial Black, Arial",
+        fontFamily: "Neopixel",
         fontSize: 14,
         fontWeight: "bold",
         fill: "#ffffff",

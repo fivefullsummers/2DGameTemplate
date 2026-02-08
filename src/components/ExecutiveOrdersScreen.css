@@ -1,0 +1,108 @@
+/* Executive Orders overlay: weapon dropdown */
+.executive-orders-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.executive-orders-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.executive-orders-overlay > * {
+  pointer-events: auto;
+}
+
+.weapon-dropdown-wrap {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  z-index: 10;
+}
+
+.weapon-dropdown-label {
+  font-family: 'Neopixel', sans-serif;
+  font-size: 12px;
+  color: #00cc00;
+  margin-bottom: 6px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.weapon-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid #00ff88;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Neopixel', sans-serif;
+  font-size: 14px;
+  color: #fff;
+  min-width: 200px;
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+}
+
+.weapon-dropdown-trigger:hover {
+  border-color: #00ffcc;
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.5);
+}
+
+.weapon-sprite-placeholder {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #ffff00 0%, #ffaa00 100%);
+  border-radius: 2px;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(255, 255, 0, 0.6);
+}
+
+.weapon-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 2px solid #00ff88;
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 4px 0;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.8);
+}
+
+.weapon-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: 'Neopixel', sans-serif;
+  font-size: 13px;
+  color: #ccc;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.weapon-dropdown-option:hover {
+  background: rgba(0, 255, 136, 0.15);
+  color: #fff;
+}
+
+.weapon-dropdown-option.selected {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+}

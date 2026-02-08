@@ -8,7 +8,7 @@
   left: 10px;
   z-index: 1000;
   pointer-events: none;
-  font-family: 'Courier New', 'Consolas', monospace;
+  font-family: 'Neopixel', sans-serif;
 }
 
 .collision-info-box {

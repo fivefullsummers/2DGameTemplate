@@ -110,13 +110,33 @@ const EnemyFormation = ({
   const BASE_MOVE_DELAY = 800; // Base delay in ms when all enemies alive
   const MIN_MOVE_DELAY = 150; // Minimum delay (when few enemies left)
   
-  // Space Invaders shooting parameters
-  const MAX_ENEMY_BULLETS = 2; // Only 3 enemy bullets on screen at once
+  // Space Invaders shooting parameters (scaled by Executive Order difficulty)
   const BASE_SHOOT_DELAY = 1500; // Base delay between shots (1.5 seconds)
   const MIN_SHOOT_DELAY = 1500; // Minimum delay when few enemies left
   const BULLET_SPEED_NORMAL = 4; // Normal bullet speed (pixels per frame)
   const BULLET_SPEED_FAST = 5; // Fast bullet speed when ≤8 enemies
   const FEW_ENEMIES_THRESHOLD = 8; // Speed up bullets when this many or fewer
+
+  const getMaxEnemyBullets = useCallback((): number => {
+    const d = gameState.getDifficulty();
+    if (d === 'easy') return 1;
+    if (d === 'hard') return 4;
+    return 2; // medium
+  }, []);
+
+  const getDifficultyShootDelayMultiplier = useCallback((): number => {
+    const d = gameState.getDifficulty();
+    if (d === 'easy') return 2;
+    if (d === 'hard') return 0.5;
+    return 1; // medium
+  }, []);
+
+  const getDifficultyBulletSpeedMultiplier = useCallback((): number => {
+    const d = gameState.getDifficulty();
+    if (d === 'easy') return 0.75;
+    if (d === 'hard') return 1.25;
+    return 1; // medium
+  }, []);
   
   // Screen boundaries (accounting for game world)
   const LEFT_BOUNDARY = TILE_SIZE * 1.5;
@@ -133,20 +153,21 @@ const EnemyFormation = ({
     return Math.max(delay, MIN_MOVE_DELAY);
   }, [enemies.length]);
 
-  // Calculate current shoot delay (faster as enemies die)
+  // Calculate current shoot delay (faster as enemies die; scaled by difficulty)
   const getShootDelay = useCallback(() => {
     if (enemies.length === 0) return BASE_SHOOT_DELAY;
     
     const speedMultiplier = enemies.length / initialEnemyCount.current;
-    const delay = BASE_SHOOT_DELAY * speedMultiplier;
+    const delay = BASE_SHOOT_DELAY * speedMultiplier * getDifficultyShootDelayMultiplier();
     
-    return Math.max(delay, MIN_SHOOT_DELAY);
-  }, [enemies.length]);
+    return Math.max(delay, MIN_SHOOT_DELAY * getDifficultyShootDelayMultiplier());
+  }, [enemies.length, getDifficultyShootDelayMultiplier]);
 
-  // Get bullet speed based on enemy count
+  // Get bullet speed based on enemy count and difficulty
   const getBulletSpeed = useCallback(() => {
-    return enemies.length <= FEW_ENEMIES_THRESHOLD ? BULLET_SPEED_FAST : BULLET_SPEED_NORMAL;
-  }, [enemies.length]);
+    const base = enemies.length <= FEW_ENEMIES_THRESHOLD ? BULLET_SPEED_FAST : BULLET_SPEED_NORMAL;
+    return base * getDifficultyBulletSpeedMultiplier();
+  }, [enemies.length, getDifficultyBulletSpeedMultiplier]);
 
   // Find bottommost enemies in each column (only these can shoot)
   const getBottommostEnemies = useCallback(() => {
@@ -180,8 +201,8 @@ const EnemyFormation = ({
 
   // Spawn enemy bullet (plays this enemy type's shoot sound)
   const spawnEnemyBullet = useCallback(() => {
-    // Check bullet limit
-    if (enemyBullets.length >= MAX_ENEMY_BULLETS) return;
+    // Check bullet limit (per difficulty)
+    if (enemyBullets.length >= getMaxEnemyBullets()) return;
 
     // Get eligible shooters (bottommost in each column)
     const shooters = getBottommostEnemies();
@@ -191,7 +212,7 @@ const EnemyFormation = ({
     const shooter = shooters[Math.floor(Math.random() * shooters.length)];
 
     const shootSfx = sound.find(enemyTypeConfig.shootSoundId);
-    if (shootSfx) shootSfx.play({ volume: 0.25 });
+    if (shootSfx) shootSfx.play({ volume: enemyTypeConfig.shootSoundId === "pound-sound" ? 0.05 : 0.25 });
     
     const newBullet: EnemyBulletData = {
       id: `enemy-bullet-${Date.now()}-${Math.random()}`,
@@ -201,7 +222,7 @@ const EnemyFormation = ({
 
     bulletPositionsRef.current.set(newBullet.id, { x: newBullet.x, y: newBullet.y });
     setEnemyBullets((prev) => [...prev, newBullet]);
-  }, [enemyBullets.length, getBottommostEnemies, enemyTypeConfig.shootSoundId]);
+  }, [enemyBullets.length, getBottommostEnemies, enemyTypeConfig.shootSoundId, getMaxEnemyBullets]);
 
   // Check if any enemy would hit the boundary
   const checkBoundary = useCallback(() => {

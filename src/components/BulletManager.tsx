@@ -65,7 +65,7 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
           };
           const soundId = config.soundId ?? "pound-sound";
           const fireSfx = sound.find(soundId);
-          if (fireSfx) fireSfx.play({ volume: 0.5 });
+          if (fireSfx) fireSfx.play({ volume: soundId === "pound-sound" ? 0.05 : 0.5 });
           return [...prev, newBullet];
         });
       },

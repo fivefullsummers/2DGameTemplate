@@ -200,7 +200,7 @@ const HeroAnimated = ({
         // Play shooting sound
         const poundSfx = sound.find("pound-sound");
         if (poundSfx) {
-          poundSfx.play({ volume: 0.5 });
+          poundSfx.play({ volume: 0.05 });
         }
         
         // Spawn bullet in the direction hero is facing

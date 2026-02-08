@@ -51,7 +51,7 @@ const HeroGrid = ({ bulletManagerRef, gunType = DEFAULT_GUN_TYPE }: HeroGridProp
         // Play shooting sound
         const poundSfx = sound.find("pound-sound");
         if (poundSfx) {
-          poundSfx.play({ volume: 0.5 });
+          poundSfx.play({ volume: 0.05 });
         }
         
         // Spawn bullet at hero position, always shooting UP

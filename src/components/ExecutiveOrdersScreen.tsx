@@ -4,7 +4,7 @@ import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
-import { gameState } from "../utils/GameState";
+import { gameState, type GameDifficulty } from "../utils/GameState";
 import { BULLET_TYPES } from "../consts/bullet-config";
 import "./ExecutiveOrdersScreen.css";
 
@@ -16,9 +16,10 @@ const BULLET_TYPE_KEYS = Object.keys(BULLET_TYPES) as string[];
 
 const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
   const { width, height } = useDimensions();
-  const [hoverButton, setHoverButton] = useState<"back" | "kings" | "bigred" | null>(null);
+  const [hoverButton, setHoverButton] = useState<"back" | "kings" | "bigred" | "diff-i" | "diff-o" | "diff-u" | null>(null);
   const [kingsMode, setKingsMode] = useState(gameState.getKingsMode());
   const [bigRedButtonEnabled, setBigRedButtonEnabled] = useState(gameState.getBigRedButtonEnabled());
+  const [difficulty, setDifficulty] = useState<GameDifficulty>(gameState.getDifficulty());
   const [selectedBulletType, setSelectedBulletType] = useState(gameState.getSelectedBulletType());
   const [weaponDropdownOpen, setWeaponDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -27,6 +28,7 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
     const unsub = gameState.subscribe((state) => {
       setKingsMode(state.kingsModeEnabled);
       setBigRedButtonEnabled(state.bigRedButtonEnabled);
+      setDifficulty(state.difficulty);
       setSelectedBulletType(state.selectedBulletType);
     });
     return unsub;
@@ -105,10 +107,8 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
   );
 
   const playClick = () => {
-    const clickSfx = sound.find("explosion-sound");
-    if (clickSfx) {
-      clickSfx.play({ volume: 0.3 });
-    }
+    const clickSfx = sound.find("button-click");
+    if (clickSfx) clickSfx.play({ volume: 0.4 });
   };
 
   const handleBack = () => {
@@ -126,11 +126,17 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
     gameState.setBigRedButtonEnabled(!gameState.getBigRedButtonEnabled());
   };
 
+  const handleDifficultySelect = (level: GameDifficulty) => {
+    playClick();
+    gameState.setDifficulty(level);
+    setDifficulty(level);
+  };
+
   const playBulletSound = (bulletType: string) => {
     const config = BULLET_TYPES[bulletType];
     const soundId = config?.soundId ?? "pound-sound";
     const s = sound.find(soundId);
-    if (s) s.play({ volume: 0.5 });
+    if (s) s.play({ volume: soundId === "pound-sound" ? 0.05 : 0.5 });
   };
 
   const handleWeaponSelect = (bulletType: string) => {
@@ -209,9 +215,75 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
         />
       </Container>
 
+      {/* Difficulty: enemy shooting aggression — I = easy, O = medium, U = hard */}
+      <Container x={width / 2} y={height / 2 + 70}>
+        <Text text="Difficulty" anchor={0.5} style={optionTitleStyle} />
+        <Text text="Enemy shooting aggression" anchor={0.5} style={optionDescStyle} y={18} />
+        <Container x={-52} y={38}>
+          <Container
+            x={0}
+            y={0}
+            eventMode="static"
+            cursor="pointer"
+            pointerdown={() => handleDifficultySelect('easy')}
+            pointerover={() => setHoverButton("diff-i")}
+            pointerout={() => setHoverButton(null)}
+          >
+            <Text
+              text="I"
+              anchor={0.5}
+              style={buttonStyle}
+              tint={difficulty === 'easy' ? 0x00ff88 : hoverButton === "diff-i" ? 0xccccff : 0xffffff}
+              scale={{ x: hoverButton === "diff-i" ? 1.15 : 1, y: hoverButton === "diff-i" ? 1.15 : 1 }}
+            />
+          </Container>
+          <Text text="Easy" anchor={0.5} style={optionDescStyle} x={0} y={22} />
+        </Container>
+        <Container x={0} y={38}>
+          <Container
+            x={0}
+            y={0}
+            eventMode="static"
+            cursor="pointer"
+            pointerdown={() => handleDifficultySelect('medium')}
+            pointerover={() => setHoverButton("diff-o")}
+            pointerout={() => setHoverButton(null)}
+          >
+            <Text
+              text="O"
+              anchor={0.5}
+              style={buttonStyle}
+              tint={difficulty === 'medium' ? 0x00ff88 : hoverButton === "diff-o" ? 0xccccff : 0xffffff}
+              scale={{ x: hoverButton === "diff-o" ? 1.15 : 1, y: hoverButton === "diff-o" ? 1.15 : 1 }}
+            />
+          </Container>
+          <Text text="Medium" anchor={0.5} style={optionDescStyle} x={0} y={22} />
+        </Container>
+        <Container x={52} y={38}>
+          <Container
+            x={0}
+            y={0}
+            eventMode="static"
+            cursor="pointer"
+            pointerdown={() => handleDifficultySelect('hard')}
+            pointerover={() => setHoverButton("diff-u")}
+            pointerout={() => setHoverButton(null)}
+          >
+            <Text
+              text="U"
+              anchor={0.5}
+              style={buttonStyle}
+              tint={difficulty === 'hard' ? 0x00ff88 : hoverButton === "diff-u" ? 0xccccff : 0xffffff}
+              scale={{ x: hoverButton === "diff-u" ? 1.15 : 1, y: hoverButton === "diff-u" ? 1.15 : 1 }}
+            />
+          </Container>
+          <Text text="Hard" anchor={0.5} style={optionDescStyle} x={0} y={22} />
+        </Container>
+      </Container>
+
       <Container
         x={width / 2}
-        y={height / 2 + 100}
+        y={height / 2 + 160}
         eventMode="static"
         cursor="pointer"
         pointerdown={handleBack}

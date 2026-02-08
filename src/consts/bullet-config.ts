@@ -12,6 +12,10 @@ const BULLET_SCALE_SMALL = 0.05;
 // Sound alias for bullet fire (loaded via AssetLoader)
 const BULLET_SOUND_PLACEHOLDER = "pound-sound";
 
+// Speed curve: explosive exit, then ease to cruise (bigger curve = more punch)
+const BULLET_INITIAL_SPEED_MULTIPLIER = 4;
+const BULLET_SPEED_DECAY_MS = 180;
+
 // Bullet configuration interface
 export interface BulletConfig {
   name: string;
@@ -29,6 +33,9 @@ export interface BulletConfig {
   /** When set, overrides gun fire rate (ms between shots) for spray-style weapons */
   fireRateMs?: number;
   soundId?: string;
+  /** Speed curve: start at (speed * initialSpeedMultiplier), ease to cruise (speed) over speedDecayMs. */
+  initialSpeedMultiplier?: number;
+  speedDecayMs?: number;
 }
 
 // Predefined bullet types - easily configurable
@@ -48,6 +55,8 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     lifetime: 0,
     maxOnScreen: 1,
     soundId: BULLET_SOUND_PLACEHOLDER,
+    initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
+    speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
   fast: {
     name: "Fast Bullet",
@@ -62,6 +71,8 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     lifetime: 0,
     maxOnScreen: 5,
     soundId: BULLET_SOUND_PLACEHOLDER,
+    initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
+    speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
   heavy: {
     name: "Heavy Bullet",
@@ -76,6 +87,8 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     lifetime: 3000,
     maxOnScreen: 1,
     soundId: BULLET_SOUND_PLACEHOLDER,
+    initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
+    speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
   spaceInvadersBullet: {
     name: "Space Invaders Bullet",
@@ -90,6 +103,8 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     lifetime: 0,
     maxOnScreen: 1,
     soundId: BULLET_SOUND_PLACEHOLDER,
+    initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
+    speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
   spreader: {
     name: "Spreader",
@@ -104,6 +119,8 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     lifetime: 0,
     maxOnScreen: 1,
     soundId: BULLET_SOUND_PLACEHOLDER,
+    initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
+    speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
   heavyMachineGun: {
     name: "Heavy Machine Gun",
@@ -119,11 +136,50 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     maxOnScreen: 500,
     fireRateMs: 40,
     soundId: BULLET_SOUND_PLACEHOLDER,
+    initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
+    speedDecayMs: BULLET_SPEED_DECAY_MS,
+  },
+  lineGun: {
+    name: "Line Gun",
+    spriteAsset: BULLET_ASSET_ALIAS,
+    row: 0,
+    col: 0,
+    speed: 6,
+    damage: 100,
+    frameWidth: BULLET_FRAME_WIDTH,
+    frameHeight: BULLET_FRAME_HEIGHT,
+    scale: BULLET_SCALE_SMALL,
+    lifetime: 0,
+    maxOnScreen: 1,
+    soundId: BULLET_SOUND_PLACEHOLDER,
+    initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
+    speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
 };
 
 // Default bullet type
 export const DEFAULT_BULLET_TYPE = "basic";
+
+/** Last 3 guns from powerup spritesheet: spreader, heavyMachineGun, lineGun (alternate when collecting). */
+export const POWERUP_GUN_BULLET_TYPES: readonly string[] = [
+  "spreader",
+  "heavyMachineGun",
+  "lineGun",
+];
+
+export const POWERUP_FRAME_COUNT = POWERUP_GUN_BULLET_TYPES.length;
+
+/** Spritesheet has 5 frames; we show the last 3 (indices 2, 3, 4). */
+export const POWERUP_SPRITE_FRAME_OFFSET = 2;
+
+/** Frame index in guns.png (5-frame powerup spritesheet) for each bullet type. Frame 1 = basic. */
+export const BULLET_TYPE_TO_GUN_FRAME: Record<string, number> = {
+  basic: 1,
+  spreader: 2,
+  heavyMachineGun: 3,
+  lineGun: 4,
+};
+export const DEFAULT_GUN_FRAME = 1;
 
 // Gun configuration interface
 export interface GunConfig {
@@ -175,6 +231,13 @@ export const GUN_TYPES: Record<string, GunConfig> = {
     fireRate: 0,
     automatic: false,
   },
+  // Line Gun: one shot kills entire row in a line, domino-style
+  lineGun: {
+    name: "Line Gun",
+    bulletType: "lineGun",
+    fireRate: 0,
+    automatic: false,
+  },
 };
 
 // Default gun type
@@ -182,6 +245,6 @@ export const DEFAULT_GUN_TYPE = "Machine Gun";
 
 // Spreader gun: explosive wave by grid radius (Chebyshev distance)
 // spread_radius 1 = center + ring 1 (up to 8 neighbors), 2 = + ring 2 (up to 16 more), etc.
-export const SPREADER_SPREAD_RADIUS = 2;
+export const SPREADER_SPREAD_RADIUS = 1;
 // Delay in ms between each radius wave (center dies, then ring 1, then ring 2...)
 export const SPREADER_WAVE_DELAY_MS = 120;

@@ -5,9 +5,8 @@
 
 import { Graphics, useTick } from "@pixi/react";
 import { Graphics as PixiGraphics } from "pixi.js";
-import { useCallback, useRef } from "react";
-import { TILE_SIZE, ENEMY_COLLISION_MULTIPLIER } from "../consts/game-world";
-import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS } from "../consts/tuning-config";
+import React, { useCallback, useRef } from "react";
+import { PLAYER_COLLISION_RADIUS } from "../consts/tuning-config";
 import { IPosition } from "../types/common";
 
 interface EnemyData {
@@ -18,20 +17,20 @@ interface EnemyData {
   positionRef: React.MutableRefObject<IPosition>;
 }
 
-interface EntityCollisionDebugProps {
+export interface EntityCollisionDebugProps {
   isVisible?: boolean;
   playerPositionRef?: React.MutableRefObject<IPosition>;
   enemies?: EnemyData[];
+  /** Enemy radius for player bullet hit (and debug circle). Defaults to 32 if not provided. */
+  enemyRadius?: number;
 }
 
-const EntityCollisionDebug = ({ 
-  isVisible = true, 
+const EntityCollisionDebug: React.FC<EntityCollisionDebugProps> = ({
+  isVisible = true,
   playerPositionRef,
-  enemies = []
-}: EntityCollisionDebugProps) => {
-  
-  // Collision radius calculations (matching the actual collision detection)
-  const ENEMY_RADIUS = (TILE_SIZE * ENEMY_SCALE * ENEMY_COLLISION_MULTIPLIER) / 2; // Actual collision area
+  enemies = [],
+  enemyRadius = 32,
+}) => {
   
   const graphicsRef = useRef<PixiGraphics>(null);
 
@@ -91,7 +90,7 @@ const EntityCollisionDebug = ({
       g.drawCircle(
         enemyPos.x,
         enemyPos.y,
-        ENEMY_RADIUS
+        enemyRadius
       );
       
       // Draw center point
@@ -102,7 +101,7 @@ const EntityCollisionDebug = ({
       
       // Draw filled semi-transparent area
       g.beginFill(0xff0000, 0.1);
-      g.drawCircle(enemyPos.x, enemyPos.y, ENEMY_RADIUS);
+      g.drawCircle(enemyPos.x, enemyPos.y, enemyRadius);
       g.endFill();
     });
   });

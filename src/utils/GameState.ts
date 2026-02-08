@@ -18,7 +18,7 @@ export const SCORE_VALUES = {
 // Game constants from Space Invaders mechanics
 export const GAME_CONSTANTS = {
   STARTING_LIVES: 3,
-  EXTRA_LIFE_THRESHOLD: 1500,  // Award extra life at this score
+  EXTRA_LIFE_THRESHOLD: 1500,  // Award extra life every this many points (1500, 3000, 4500...)
   STARTING_WAVE: 1,
   TOTAL_ENEMIES: 55,  // 11 columns × 5 rows in classic Space Invaders
 } as const;
@@ -38,6 +38,8 @@ export interface IGameStateData {
   kingsModeEnabled: boolean; // Executive Order: god mode (no damage)
   bigRedButtonEnabled: boolean; // Executive Order: show Big Red Button (clear wave)
   selectedBulletType: string; // Current weapon (key in BULLET_TYPES)
+  /** Current effective weapon (powerup override or selected); use for UI e.g. shoot button gun icon. */
+  effectiveBulletType: string;
   selectedPlayerId: string; // Current player (key in PLAYER_CONFIGS)
   selectedEnemyTypeId: string; // Current enemy type for the level (key in ENEMY_TYPE_CONFIGS)
   difficulty: GameDifficulty; // Executive Order: enemy shooting aggression (easy / medium / hard)
@@ -100,11 +102,20 @@ export class GameState {
     GameState.instance = null;
   }
 
+  private clearPowerupExpiryTimeout(): void {
+    if (this.powerupExpiryTimeoutId != null) {
+      clearTimeout(this.powerupExpiryTimeoutId);
+      this.powerupExpiryTimeoutId = null;
+    }
+    this.powerupBulletTypeOverride = null;
+  }
+
   /**
    * Initialize game state for a new game
    */
   public initGame(totalEnemies: number): void {
     this.clearExtraLifeMessageTimeout();
+    this.clearPowerupExpiryTimeout();
     this.score = 0;
     this.lives = GAME_CONSTANTS.STARTING_LIVES;
     this.wave = GAME_CONSTANTS.STARTING_WAVE;
@@ -148,11 +159,14 @@ export class GameState {
     const previousScore = this.score;
     this.score += points;
     
-    // Check for extra life threshold
-    if (!this.extraLifeAwarded &&
-        previousScore < GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD &&
-        this.score >= GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD) {
-      this.addLife();
+    // Award extra life every EXTRA_LIFE_THRESHOLD points (1500, 3000, 4500...)
+    const prevMultiple = Math.floor(previousScore / GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD);
+    const currMultiple = Math.floor(this.score / GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD);
+    if (currMultiple > prevMultiple) {
+      const livesToAdd = currMultiple - prevMultiple;
+      for (let i = 0; i < livesToAdd; i++) {
+        this.addLife();
+      }
       this.extraLifeAwarded = true;
       this.showExtraLifeMessage = true;
       this.clearExtraLifeMessageTimeout();
@@ -265,6 +279,7 @@ export class GameState {
       kingsModeEnabled: this.kingsModeEnabled,
       bigRedButtonEnabled: this.bigRedButtonEnabled,
       selectedBulletType: this.selectedBulletType,
+      effectiveBulletType: this.getSelectedBulletType(),
       selectedPlayerId: this.selectedPlayerId,
       selectedEnemyTypeId: this.selectedEnemyTypeId,
       difficulty: this.difficulty,
@@ -307,6 +322,11 @@ export class GameState {
 
   /** Selected weapon (bullet type key) for Executive Orders dropdown; persists. */
   private selectedBulletType: string = 'basic';
+
+  /** Temporary bullet type from powerup; overrides selectedBulletType until expiry. */
+  private powerupBulletTypeOverride: string | null = null;
+  private powerupOverrideExpiry: number = 0;
+  private powerupExpiryTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   /** Selected player id (in-memory; set from player select screen). */
   private selectedPlayerId: string = DEFAULT_PLAYER_ID;
@@ -414,9 +434,62 @@ export class GameState {
 
   /**
    * Get selected weapon (bullet type key from BULLET_TYPES).
+   * If a powerup override is active (within duration), that type is returned instead.
    */
   public getSelectedBulletType(): string {
+    const now = Date.now();
+    if (
+      this.powerupBulletTypeOverride != null &&
+      now < this.powerupOverrideExpiry
+    ) {
+      return this.powerupBulletTypeOverride;
+    }
+    if (now >= this.powerupOverrideExpiry && this.powerupBulletTypeOverride != null) {
+      this.powerupBulletTypeOverride = null;
+    }
     return this.selectedBulletType;
+  }
+
+  /**
+   * Clear powerup weapon override (e.g. when player shoots, for testing: powerup lasts until first shot).
+   */
+  public clearPowerupOverride(): void {
+    if (this.powerupExpiryTimeoutId != null) {
+      clearTimeout(this.powerupExpiryTimeoutId);
+      this.powerupExpiryTimeoutId = null;
+    }
+    if (this.powerupBulletTypeOverride != null) {
+      this.powerupBulletTypeOverride = null;
+      this.notifyStateChange();
+    }
+  }
+
+  /**
+   * Set temporary bullet type from powerup (e.g. for 3 seconds).
+   */
+  public setPowerupBulletType(bulletType: string, durationMs: number): void {
+    if (this.powerupExpiryTimeoutId != null) {
+      clearTimeout(this.powerupExpiryTimeoutId);
+      this.powerupExpiryTimeoutId = null;
+    }
+    this.powerupBulletTypeOverride = bulletType;
+    this.powerupOverrideExpiry = Date.now() + durationMs;
+    this.powerupExpiryTimeoutId = setTimeout(() => {
+      this.powerupExpiryTimeoutId = null;
+      this.powerupBulletTypeOverride = null;
+      this.notifyStateChange();
+    }, durationMs);
+    this.notifyStateChange();
+  }
+
+  /**
+   * True while the powerup weapon override is active (player is immune to damage during this time).
+   */
+  public isPowerupActive(): boolean {
+    const now = Date.now();
+    return (
+      this.powerupBulletTypeOverride != null && now < this.powerupOverrideExpiry
+    );
   }
 
   /**

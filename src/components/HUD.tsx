@@ -4,7 +4,8 @@
  * Based on classic Space Invaders HUD design
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
 import { gameState, IGameStateData } from '../utils/GameState';
 import { BULLET_TYPES } from '../consts/bullet-config';
 import './HUD.css';
@@ -15,6 +16,7 @@ interface HUDProps {
 
 const HUD = ({ showDebugInfo = false }: HUDProps) => {
   const [state, setState] = useState<IGameStateData>(gameState.getState());
+  const extraLifeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // Subscribe to game state changes
@@ -25,6 +27,28 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
     // Cleanup subscription on unmount
     return unsubscribe;
   }, []);
+
+  // Extra life toast: small in left corner, float up + fade out with GSAP
+  useEffect(() => {
+    if (!state.showExtraLifeMessage) return;
+    const el = extraLifeRef.current;
+    if (!el) return;
+
+    gsap.killTweensOf(el);
+    gsap.set(el, { y: 0, opacity: 1 });
+
+    const tween = gsap.to(el, {
+      y: -72,
+      opacity: 0,
+      duration: 2,
+      ease: 'power2.out',
+      overwrite: true,
+    });
+
+    return () => {
+      tween.kill();
+    };
+  }, [state.showExtraLifeMessage]);
 
   // Format score with leading zeros (classic arcade style)
   const formatScore = (score: number): string => {
@@ -107,10 +131,10 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
         </div>
       )}
 
-      {/* Extra Life Message (only for ~2.5s right when we award, not on next wave) */}
+      {/* Extra Life toast: small, left corner, floats up and fades (GSAP) */}
       {state.showExtraLifeMessage && (
-        <div className="hud-message extra-life-message">
-          <div className="message-text">EXTRA LIFE!</div>
+        <div ref={extraLifeRef} className="extra-life-toast">
+          <span className="extra-life-toast-text">+1 LIFE</span>
         </div>
       )}
     </div>

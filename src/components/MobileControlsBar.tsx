@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import MobileTwoButtonController from "./MobileTwoButtonController";
 import MobileShootButton from "./MobileShootButton";
 import BigRedButton from "./BigRedButton";
 import { useControlsContext } from "../contexts/ControlsContext";
 import { isMobile } from "../consts/game-world";
+import { gameState } from "../utils/GameState";
 
 interface MobileControlsBarProps {
   onBigRedButtonPress?: () => void;
@@ -19,6 +21,14 @@ const MobileControlsBar = ({
     triggerMobileShoot,
     shotCooldownInfo,
   } = useControlsContext();
+  const [effectiveBulletType, setEffectiveBulletType] = useState(gameState.getState().effectiveBulletType);
+
+  useEffect(() => {
+    const unsubscribe = gameState.subscribe((state) => {
+      setEffectiveBulletType(state.effectiveBulletType);
+    });
+    return unsubscribe;
+  }, []);
 
   if (!isMobile()) {
     return null;
@@ -48,6 +58,7 @@ const MobileControlsBar = ({
       <MobileShootButton
         onShoot={triggerMobileShoot}
         shotCooldownInfo={shotCooldownInfo}
+        effectiveBulletType={effectiveBulletType}
       />
     </div>
   );

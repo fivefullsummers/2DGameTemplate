@@ -51,11 +51,11 @@ const CRTOverlay = ({ width, height, uScan = 0.30, uWarp = 0 }: CRTOverlayProps)
     return geom;
   }, [width, height]);
 
-  // Shader material with uniforms for basic CRT effect (warp + scanlines)
+  // Shader material: create only when width/height change so we never tear down the mesh for uScan/uWarp.
+  // uScan/uWarp are updated in place by the effect below (avoids mesh destroy/recreate and blank screen).
   const material = useMemo(() => {
     const program = PIXI.Program.from(vertexShader, fragmentShader, "crtShader");
-
-    const meshMaterial = new PIXI.MeshMaterial(PIXI.Texture.WHITE, {
+    return new PIXI.MeshMaterial(PIXI.Texture.WHITE, {
       program,
       uniforms: {
         uResolution: new Float32Array([width, height]),
@@ -63,11 +63,20 @@ const CRTOverlay = ({ width, height, uScan = 0.30, uWarp = 0 }: CRTOverlayProps)
         uScan,
       },
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit uScan/uWarp; we update uniforms in effect
+  }, [width, height]);
 
-    return meshMaterial;
-  }, [width, height, uScan, uWarp]);
+  // When uScan/uWarp or material change, update uniforms in place (avoids mesh destroy/recreate and blank screen)
+  useEffect(() => {
+    const mesh = meshRef.current;
+    const uniforms = mesh?.material?.uniforms as { uScan?: number; uWarp?: number } | undefined;
+    if (uniforms) {
+      uniforms.uScan = uScan;
+      uniforms.uWarp = uWarp;
+    }
+  }, [uScan, uWarp, material]);
 
-  // Attach mesh to container and keep geometry in sync with viewport size
+  // Attach mesh to container and keep geometry in sync with viewport size (only recreate when geometry/material ref changes)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -76,7 +85,6 @@ const CRTOverlay = ({ width, height, uScan = 0.30, uWarp = 0 }: CRTOverlayProps)
       const mesh = new PIXI.Mesh(geometry, material);
       mesh.x = 0;
       mesh.y = 0;
-      // Normal blend: we rely on fragment alpha to darken underlying scene.
       mesh.blendMode = PIXI.BLEND_MODES.NORMAL;
       meshRef.current = mesh;
       container.addChild(mesh);
@@ -87,6 +95,7 @@ const CRTOverlay = ({ width, height, uScan = 0.30, uWarp = 0 }: CRTOverlayProps)
         oldGeometry.destroy();
       }
       mesh.geometry = geometry;
+      mesh.material = material;
     }
 
     return () => {

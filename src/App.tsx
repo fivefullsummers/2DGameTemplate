@@ -71,7 +71,8 @@ export const App = () => {
   };
 
   const handleReplayLevel = () => {
-    // Replay the wave we just completed, keeping current wave, score, and lives
+    // Replay the wave we just completed, keeping current wave and lives.
+    // Score is reset by GameState back to the value at the start of this wave.
     gameState.resetCurrentWave(GAME_CONSTANTS.TOTAL_ENEMIES);
     setCurrentGameState('playing');
   };

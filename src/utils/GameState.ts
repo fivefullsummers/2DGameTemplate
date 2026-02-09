@@ -26,6 +26,8 @@ export const GAME_CONSTANTS = {
 // Interface for game state data
 export interface IGameStateData {
   score: number;
+  /** Score at the start of the current wave/level (used for per-level scoring & replays). */
+  waveStartScore: number;
   highScore: number;
   lives: number;
   wave: number;
@@ -61,6 +63,8 @@ export class GameState {
   
   // Core game state
   private score: number = 0;
+  /** Score snapshot taken at the start of the current wave/level. */
+  private waveStartScore: number = 0;
   private highScore: number = 0;
   private lives: number = GAME_CONSTANTS.STARTING_LIVES;
   private wave: number = GAME_CONSTANTS.STARTING_WAVE;
@@ -130,6 +134,7 @@ export class GameState {
     this.clearPowerupMessageTimeout();
     this.clearPowerupExpiryTimeout();
     this.score = 0;
+    this.waveStartScore = 0;
     this.lives = GAME_CONSTANTS.STARTING_LIVES;
     this.wave = GAME_CONSTANTS.STARTING_WAVE;
     this.enemiesRemaining = totalEnemies;
@@ -154,6 +159,8 @@ export class GameState {
     this.showPowerupMessage = false;
     this.powerupBulletTypeToast = null;
     this.wave++;
+    // New wave starts from whatever total score we have now.
+    this.waveStartScore = this.score;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
     this.notifyStateChange();
@@ -170,6 +177,9 @@ export class GameState {
     this.showPowerupMessage = false;
     this.powerupBulletTypeToast = null;
     this.powerupShotsRemaining = null;
+    // When replaying a level, restore score to what it was when this wave began
+    // so the player does not gain/lose points from failed attempts.
+    this.score = this.waveStartScore;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
     this.notifyStateChange();
@@ -290,6 +300,7 @@ export class GameState {
   public getState(): IGameStateData {
     return {
       score: this.score,
+      waveStartScore: this.waveStartScore,
       highScore: this.highScore,
       lives: this.lives,
       wave: this.wave,
@@ -658,6 +669,8 @@ export class GameState {
 
   // Getters for individual values
   public getScore(): number { return this.score; }
+  /** Score earned during the current wave/level only. */
+  public getCurrentWaveScore(): number { return this.score - this.waveStartScore; }
   public getHighScore(): number { return this.highScore; }
   public getLives(): number { return this.lives; }
   public getWave(): number { return this.wave; }

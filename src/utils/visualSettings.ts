@@ -13,7 +13,7 @@ const KEY_MOTION_BLUR_RAMP = "game-motion-blur-ramp";
 const KEY_MOTION_BLUR_SCALE = "game-motion-blur-movement-scale";
 
 const DEFAULT_RETRO_ENABLED = true;
-const DEFAULT_RETRO_SCAN = 0.75;
+const DEFAULT_RETRO_SCAN = 0.3;
 const DEFAULT_RETRO_WARP = 0;
 const DEFAULT_MOTION_BLUR_ENABLED = true;
 const DEFAULT_MOTION_BLUR_STRENGTH = 6;

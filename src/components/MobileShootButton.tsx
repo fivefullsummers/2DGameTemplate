@@ -15,76 +15,15 @@ interface MobileShootButtonProps {
   effectiveBulletType: string;
 }
 
-/** Same 5-frame spritesheet and crop logic as Powerup (guns.png). */
+/** 5-frame spritesheet (guns.png); we show one frame via CSS. */
 const GUN_FRAME_COUNT = 5;
 
 const MobileShootButton = ({ onShootStart, onShootEnd, shotCooldownInfo, effectiveBulletType }: MobileShootButtonProps) => {
   const buttonRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [imageReady, setImageReady] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const frameIndex = BULLET_TYPE_TO_GUN_FRAME[effectiveBulletType] ?? DEFAULT_GUN_FRAME;
-  const buttonSize = MOBILE_SHOOT_BUTTON_SIZE;
-
-  // Load spritesheet once (same source as Powerup)
-  useEffect(() => {
-    if (!powerupGunsUrl) return;
-    const img = new Image();
-    imgRef.current = img;
-    img.onload = () => setImageReady(true);
-    img.onerror = () => setImageReady(false);
-    img.src = powerupGunsUrl;
-    return () => {
-      imgRef.current = null;
-    };
-  }, []);
-
-  // Crop one frame (integer pixels to avoid adjacent-frame bleed) and draw to fill the circle (cover); circle clips
-  useEffect(() => {
-    const img = imgRef.current;
-    const canvas = canvasRef.current;
-    if (!imageReady || !img || !canvas || img.naturalWidth === 0) return;
-
-    const totalWidth = img.naturalWidth;
-    const totalHeight = img.naturalHeight;
-    // Match Powerup exactly: 5 frames evenly spaced, frameWidth = totalWidth/5 (no rounding)
-    const frameWidth = totalWidth / GUN_FRAME_COUNT;
-    const frameHeight = totalHeight;
-    const clampedIndex = Math.max(0, Math.min(frameIndex, GUN_FRAME_COUNT - 1));
-    const sx = clampedIndex * frameWidth;
-    const sy = 0;
-
-    // Scale to fit inside circle with margin so powerup (bigger) sprites aren't cut off; basic stays centered
-    const coverScale = Math.max(buttonSize / frameWidth, buttonSize / frameHeight);
-    const scale = coverScale * 0.88;
-    const destW = Math.ceil(frameWidth * scale);
-    const destH = Math.ceil(frameHeight * scale);
-
-    canvas.width = destW;
-    canvas.height = destH;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(
-      img,
-      sx, sy, frameWidth, frameHeight,
-      0, 0, destW, destH
-    );
-    // Radial mask so gun edge tapers in opacity instead of hard cut-off
-    const cx = destW / 2;
-    const cy = destH / 2;
-    const r = Math.min(destW, destH) / 2;
-    const gradient = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
-    gradient.addColorStop(0, 'rgba(255,255,255,1)');
-    gradient.addColorStop(0.65, 'rgba(255,255,255,1)');
-    gradient.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.globalCompositeOperation = 'destination-in';
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, destW, destH);
-  }, [imageReady, frameIndex, buttonSize]);
+  const frameIndex = Math.max(0, Math.min(BULLET_TYPE_TO_GUN_FRAME[effectiveBulletType] ?? DEFAULT_GUN_FRAME, GUN_FRAME_COUNT - 1));
+  // Show one frame: img at 500% width, shifted by -frameIndex * (100/5)%
+  const frameOffsetPercent = (frameIndex / GUN_FRAME_COUNT) * 100;
 
   // Animate background color from red (just fired) to green (ready)
   useEffect(() => {
@@ -166,19 +105,25 @@ const MobileShootButton = ({ onShootStart, onShootEnd, shotCooldownInfo, effecti
           justifyContent: 'center',
           alignItems: 'center',
           pointerEvents: 'none',
+          overflow: 'hidden',
+          borderRadius: '50%',
         }}
       >
-        <canvas
-          ref={canvasRef}
-          style={{
-            display: 'block',
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(calc(-50% + 6px), -50%)',
-          }}
-          aria-hidden
-        />
+        {powerupGunsUrl && (
+          <img
+            src={powerupGunsUrl}
+            alt=""
+            aria-hidden
+            style={{
+              height: '88%',
+              width: '500%',
+              maxWidth: 'none',
+              objectFit: 'none',
+              objectPosition: `left center`,
+              transform: `translateX(-${frameOffsetPercent}%)`,
+            }}
+          />
+        )}
       </div>
     </div>
   );

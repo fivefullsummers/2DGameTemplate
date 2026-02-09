@@ -97,8 +97,8 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
   // Initialize animation state for each enemy
   const enemyAnimState = useRef<Map<string, { frameIndex: number; lastX: number }>>(new Map());
   
-  // Track explosion animation state
-  const explosionState = useRef<Map<string, { frameIndex: number; frameAccumulator: number }>>(new Map());
+  // Track explosion animation state (optionally startedAt for stuck safeguard)
+  const explosionState = useRef<Map<string, { frameIndex: number; frameAccumulator: number; startedAt?: number }>>(new Map());
   
   const removeEnemyBullet = useCallback((id: string) => {
     setEnemyBullets((prev) => prev.filter((b) => b.id !== id));
@@ -123,11 +123,12 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
       });
     }
     
-    // Initialize explosion state for newly exploding enemies
+    // Initialize explosion state for newly exploding enemies (also done in useTick if tick runs before next render)
     if (enemy.isExploding && !explosionState.current.has(enemy.id)) {
       explosionState.current.set(enemy.id, {
         frameIndex: 0,
         frameAccumulator: 0,
+        startedAt: Date.now(),
       });
     }
   });
@@ -308,13 +309,43 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
     const now = Date.now();
 
     // Handle explosion animations (separate explosion sprites)
+    const EXPLOSION_STUCK_MS = 2500; // Force-remove if explosion never completes (e.g. delta/tick issues)
     enemies.forEach((enemy) => {
       if (!enemy.isExploding) return;
 
-      const expState = explosionState.current.get(enemy.id);
+      // Remove main enemy sprite immediately so it never lingers or moves with formation
+      const mainSprite = enemySpriteMapRef.current.get(enemy.id);
+      if (mainSprite && container) {
+        container.removeChild(mainSprite);
+        mainSprite.destroy();
+        enemySpriteMapRef.current.delete(enemy.id);
+      }
+
+      // Ensure explosion state exists (tick may run before next render)
+      let expState = explosionState.current.get(enemy.id);
+      if (!expState) {
+        expState = { frameIndex: 0, frameAccumulator: 0, startedAt: Date.now() };
+        explosionState.current.set(enemy.id, expState);
+      }
+      const startedAt = expState.startedAt ?? Date.now();
+
+      // Stuck safeguard: force-remove if explosion has run too long
+      if (Date.now() - startedAt > EXPLOSION_STUCK_MS) {
+        const expSprite = explosionSpriteMapRef.current.get(enemy.id);
+        if (expSprite && container) {
+          container.removeChild(expSprite);
+          expSprite.destroy();
+          explosionSpriteMapRef.current.delete(enemy.id);
+        }
+        onEnemyRemove(enemy.id);
+        explosionState.current.delete(enemy.id);
+        return;
+      }
+
       if (expState) {
-        // Advance explosion animation
-        expState.frameAccumulator += EXPLOSION_SPEED * delta;
+        // Advance explosion animation (use clamped delta so we always make progress)
+        const safeDelta = Math.min(Math.max(delta, 0), 2);
+        expState.frameAccumulator += EXPLOSION_SPEED * safeDelta;
         if (expState.frameAccumulator >= 1) {
           expState.frameAccumulator = 0;
           expState.frameIndex += 1;

@@ -46,7 +46,7 @@ const MobileControlsBar = ({
         position: "relative",
         width: "100%",
         height: "100%",
-        backgroundColor: "#050b30",
+        backgroundColor: "#03030f",
       }}
     >
       <MobileTwoButtonController

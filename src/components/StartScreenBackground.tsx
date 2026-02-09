@@ -3,36 +3,24 @@ import * as PIXI from "pixi.js";
 import { Container, useTick } from "@pixi/react";
 import vertexShader from "../shaders/space/vertex.glsl?raw";
 import fragmentShader from "../shaders/space/fragment.glsl?raw";
+import { getCachedSpaceNoiseTexture } from "../utils/spaceNoiseTexture";
+
+// Cache the compiled program so we don't recompile the heavy shader on every menu screen mount
+let cachedSpaceProgram: PIXI.Program | null = null;
+function getSpaceProgram(): PIXI.Program {
+  if (!cachedSpaceProgram) {
+    cachedSpaceProgram = PIXI.Program.from(
+      vertexShader,
+      fragmentShader,
+      "spaceShader"
+    );
+  }
+  return cachedSpaceProgram;
+}
 
 interface StartScreenBackgroundProps {
   width: number;
   height: number;
-}
-
-const NOISE_SIZE = 256;
-
-function createNoiseTexture(): PIXI.Texture {
-  const canvas = document.createElement("canvas");
-  canvas.width = NOISE_SIZE;
-  canvas.height = NOISE_SIZE;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return PIXI.Texture.WHITE;
-  const imageData = ctx.createImageData(NOISE_SIZE, NOISE_SIZE);
-  const data = imageData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const v = Math.random() * 255;
-    data[i] = v;
-    data[i + 1] = v;
-    data[i + 2] = v;
-    data[i + 3] = 255;
-  }
-  ctx.putImageData(imageData, 0, 0);
-  const texture = PIXI.Texture.from(canvas);
-  const base = texture.baseTexture;
-  if (base && typeof (base as { wrapMode?: number }).wrapMode !== "undefined") {
-    (base as { wrapMode: number }).wrapMode = PIXI.WRAP_MODES.REPEAT;
-  }
-  return texture;
 }
 
 const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) => {
@@ -40,7 +28,7 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
   const meshRef = useRef<PIXI.Mesh | null>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5, active: 0 });
 
-  const noiseTexture = useMemo(() => createNoiseTexture(), []);
+  const noiseTexture = getCachedSpaceNoiseTexture();
 
   const onPointerDown = () => {
     mouseRef.current.active = 1;
@@ -85,13 +73,8 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
   }, [width, height]);
 
   const shader = useMemo(() => {
-    const program = PIXI.Program.from(
-      vertexShader,
-      fragmentShader,
-      "spaceShader"
-    );
     return new PIXI.MeshMaterial(PIXI.Texture.WHITE, {
-      program,
+      program: getSpaceProgram(),
       uniforms: {
         uResolution: new Float32Array([width, height]),
         uTime: 0,
@@ -101,7 +84,7 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uResolution updated in useTick
-  }, [noiseTexture]);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -121,7 +104,11 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
       const mesh = meshRef.current;
       if (mesh && container) {
         container.removeChild(mesh);
+        const geom = mesh.geometry;
         mesh.destroy();
+        if (geom && typeof geom.destroy === "function" && !(geom as { _destroyed?: boolean })._destroyed) {
+          geom.destroy();
+        }
         meshRef.current = null;
       }
     };

@@ -37,7 +37,7 @@ import {
   POWERUP_SPRITE_FRAME_OFFSET,
 } from "../consts/bullet-config";
 import { PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
-import PlaneBackground from "./PlaneBackground";
+import GameSpaceBackground from "./GameSpaceBackground";
 import CRTOverlay from "./CRTOverlay";
 import MobileControlsBar from "./MobileControlsBar";
 import {
@@ -780,9 +780,9 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
         justifyContent: 'flex-start',
         alignItems: 'center',
         overflow: 'hidden',
-        // Match the dark blue game background so any residual gaps
+        // Match the midnight black game background so any residual gaps
         // (e.g., due to browser UI chrome) blend seamlessly.
-        backgroundColor: '#050b30',
+        backgroundColor: '#03030f',
       }}
     >
       <HUD showDebugInfo={false} />
@@ -802,8 +802,8 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           height={stageHeight}
           onPointerDown={handleStageClick}
         >
-          {/* Full-screen plane mesh background */}
-          <PlaneBackground width={width} height={height} />
+          {/* Simple twinkling stars background */}
+          <GameSpaceBackground width={width} height={height} />
           <Container
             scale={scale}
             x={horizontalOffset}

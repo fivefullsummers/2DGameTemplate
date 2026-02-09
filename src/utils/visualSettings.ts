@@ -16,10 +16,10 @@ const DEFAULT_RETRO_ENABLED = true;
 const DEFAULT_RETRO_SCAN = 0.3;
 const DEFAULT_RETRO_WARP = 0;
 const DEFAULT_MOTION_BLUR_ENABLED = true;
-const DEFAULT_MOTION_BLUR_STRENGTH = 6;
-const DEFAULT_MOTION_BLUR_DECAY = 0.78;
-const DEFAULT_MOTION_BLUR_RAMP = 0.15;
-const DEFAULT_MOTION_BLUR_SCALE = 4;
+const DEFAULT_MOTION_BLUR_STRENGTH = 14;
+const DEFAULT_MOTION_BLUR_DECAY = 1.0;
+const DEFAULT_MOTION_BLUR_RAMP = 0.9;
+const DEFAULT_MOTION_BLUR_SCALE = 3;
 
 function getBool(key: string, defaultValue: boolean): boolean {
   if (typeof window === "undefined") return defaultValue;

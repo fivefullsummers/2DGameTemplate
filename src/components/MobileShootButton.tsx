@@ -8,7 +8,8 @@ import {
 import { BULLET_TYPE_TO_GUN_FRAME, DEFAULT_GUN_FRAME } from '../consts/bullet-config';
 
 interface MobileShootButtonProps {
-  onShoot: () => void;
+  onShootStart: () => void;
+  onShootEnd: () => void;
   shotCooldownInfo: { lastShotTime: number; fireRate: number } | null;
   /** Current effective bullet type (powerup or selected); used to pick gun sprite frame. */
   effectiveBulletType: string;
@@ -17,7 +18,7 @@ interface MobileShootButtonProps {
 /** Same 5-frame spritesheet and crop logic as Powerup (guns.png). */
 const GUN_FRAME_COUNT = 5;
 
-const MobileShootButton = ({ onShoot, shotCooldownInfo, effectiveBulletType }: MobileShootButtonProps) => {
+const MobileShootButton = ({ onShootStart, onShootEnd, shotCooldownInfo, effectiveBulletType }: MobileShootButtonProps) => {
   const buttonRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageReady, setImageReady] = useState(false);
@@ -116,11 +117,12 @@ const MobileShootButton = ({ onShoot, shotCooldownInfo, effectiveBulletType }: M
   const handleStart = (e: React.TouchEvent | React.MouseEvent) => {
     e.preventDefault();
     setIsPressed(true);
-    onShoot();
+    onShootStart();
   };
 
   const handleEnd = () => {
     setIsPressed(false);
+    onShootEnd();
   };
 
   // Raised 3D look: highlight top-left, shadow bottom; pressed = translate down + inset shadow

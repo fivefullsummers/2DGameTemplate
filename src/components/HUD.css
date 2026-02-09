@@ -276,6 +276,28 @@
   text-shadow: 0 0 8px rgba(255, 255, 0, 0.6);
 }
 
+/* Powerup toast: sits near Extra Life toast, different color to indicate weapon change */
+.powerup-toast {
+  position: fixed;
+  left: 20px;
+  top: 210px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(0, 255, 153, 0.7);
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(0, 255, 153, 0.3);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.powerup-toast-text {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #00ff99;
+  text-shadow: 0 0 8px rgba(0, 255, 153, 0.6);
+}
+
 /* Debug Info */
 .hud-debug {
   position: fixed;

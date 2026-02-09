@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import * as PIXI from "pixi.js";
 import { gsap } from "gsap";
 import { sound } from "@pixi/sound";
-import { TILE_SIZE, COLS } from "../consts/game-world";
+import { TILE_SIZE, COLS, isDesktop } from "../consts/game-world";
 import { isBlocked } from "../consts/collision-map";
 import { BulletManagerRef } from "./BulletManager";
 import { GUN_TYPES, DEFAULT_GUN_TYPE, BULLET_TYPES } from "../consts/bullet-config";
@@ -20,7 +20,11 @@ const FRAME_WIDTH = 512;  // 1536 / 3 = 512 pixels per frame
 // Movement speed & feel
 // Base horizontal speed; we also apply a small easing so movement
 // feels like it has a bit of acceleration instead of instant start/stop.
-const MOVEMENT_SPEED = 6.5; // Pixels per frame (higher than before)
+const MOVEMENT_SPEED = 6.5; // Pixels per frame (mobile tuning)
+// Desktop-only tuning: slightly slower for more deliberate feel.
+const DESKTOP_MOVE_SPEED_MULTIPLIER = 0.85;
+const DESKTOP_FIRE_RATE_MULTIPLIER = 1.15;
+const EFFECTIVE_MOVEMENT_SPEED = isDesktop() ? MOVEMENT_SPEED * DESKTOP_MOVE_SPEED_MULTIPLIER : MOVEMENT_SPEED;
 const SPEED_BOOST_MULTIPLIER = 2; // Speed multiplier when shift is pressed
 const ACCELERATION_FACTOR = 0.18; // 0–1, higher = snappier, lower = more floaty
 
@@ -305,8 +309,10 @@ const PlayerAnimated = ({
     const bulletType =
       selected && BULLET_TYPES[selected] ? selected : currentGun.bulletType;
     const bulletConfig = BULLET_TYPES[bulletType];
-    const effectiveFireRate =
+    const baseFireRate =
       bulletConfig?.fireRateMs ?? currentGun.fireRate;
+    const deviceFireRateFactor = isDesktop() ? DESKTOP_FIRE_RATE_MULTIPLIER : 1;
+    const effectiveFireRate = baseFireRate * deviceFireRateFactor;
     const effectiveAutomatic =
       bulletConfig?.fireRateMs != null || currentGun.automatic;
 
@@ -319,7 +325,7 @@ const PlayerAnimated = ({
         lastShotTime.current = now;
         bulletManagerRef.current.spawnBullet(pos.x, pos.y, "UP", bulletType);
         notifyShotFired(effectiveFireRate);
-        gameState.clearPowerupOverride(); // Testing: powerup ends when you shoot
+        gameState.handlePlayerShotFired();
       }
     }
 
@@ -334,7 +340,7 @@ const PlayerAnimated = ({
 
     const isShiftPressed = pressedKeys.includes("SHIFT");
     const speedMultiplier = isShiftPressed ? SPEED_BOOST_MULTIPLIER : 1;
-    const targetVelocityX = magnitude > 0 ? (dx / magnitude) * MOVEMENT_SPEED * speedMultiplier : 0;
+    const targetVelocityX = magnitude > 0 ? (dx / magnitude) * EFFECTIVE_MOVEMENT_SPEED * speedMultiplier : 0;
     let vx = velocityXRef.current;
     vx += (targetVelocityX - vx) * ACCELERATION_FACTOR;
     velocityXRef.current = vx;

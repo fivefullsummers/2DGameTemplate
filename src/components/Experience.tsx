@@ -18,6 +18,7 @@ import CollisionInfo from "./CollisionInfo";
 import BulletManager, { BulletManagerRef } from "./BulletManager";
 import Powerup, { PowerupData, POWERUP_ANIMATION_SPEED } from "./Powerup";
 import HUD from "./HUD";
+import { gsap } from "gsap";
 import { PointerEvent, useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { IPosition } from "../types/common";
 import { ControlsProvider } from "../contexts/ControlsContext";
@@ -41,16 +42,19 @@ import MobileControlsBar from "./MobileControlsBar";
 const SHAKE_AMPLITUDE_PX = 3;
 const SHAKE_SPREADER_AMPLITUDE_PX = 7;
 const SHAKE_DURATION_MS = 100;
-/** Long duration for testing: powerup stays until you shoot (cleared in PlayerAnimated on fire). */
-const POWERUP_DURATION_MS = 999999;
+/** Powerup weapon override lasts 2 seconds. */
+const POWERUP_DURATION_MS = 2000;
 const POWERUP_COLLISION_RADIUS = 14;
 /** Collect when powerup is within this distance of player (snap = meets player). */
 const POWERUP_COLLECT_RADIUS = 20;
-/** Zip-to-player: base lerp per frame when far; adds more as we get close (exponential zip). */
-const POWERUP_ZIP_BASE_LERP = 0.02;
-const POWERUP_ZIP_NEAR_LERP = 0.24;
+/** Zip-to-player: base lerp when far; adds more as we get close (exponential zip). Bias: faster. */
+const POWERUP_ZIP_BASE_LERP = 0.06;
+const POWERUP_ZIP_NEAR_LERP = 0.55;
 const POWERUP_ZIP_DIST_REF = 100;
 const POWERUP_ZIP_EXPONENT = 1.8;
+/** GSAP ramp: speed factor 0→1 with expo.in (brief slow then exponential zip). Start higher = faster. */
+const POWERUP_ZIP_RAMP_START = 0.4;
+const POWERUP_ZIP_RAMP_DURATION_S = 0.08;
 /** Scale: max when far, min when at player. */
 const POWERUP_SCALE_MAX = 0.2;
 const POWERUP_SCALE_MIN = 0.06;
@@ -85,17 +89,19 @@ const ScreenShakeUpdater = ({
   return <Container />;
 };
 
-/** Runs inside Stage; zips powerups toward player (tracks player), exponential zip, shrinking scale. */
+/** Runs inside Stage; zips powerups toward player (tracks player). Speed ramp 0→1 is driven by GSAP (smooth slow-then-zip curve). */
 const PowerupUpdater = ({
   powerups,
   setPowerups,
   playerPositionRef,
   powerupPositionsRef,
+  powerupZipFactorRef,
 }: {
   powerups: PowerupData[];
   setPowerups: React.Dispatch<React.SetStateAction<PowerupData[]>>;
   playerPositionRef: React.RefObject<IPosition>;
   powerupPositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>;
+  powerupZipFactorRef: React.MutableRefObject<Map<string, { value: number }>>;
 }) => {
   const accumulatorRef = useRef(0);
   useTick((delta) => {
@@ -134,7 +140,9 @@ const PowerupUpdater = ({
       const invDist = dist > 0 ? 1 / dist : 0;
       const t = Math.min(1, dist / POWERUP_ZIP_DIST_REF);
       const zipFactor = 1 - Math.pow(t, POWERUP_ZIP_EXPONENT);
-      const lerp = (POWERUP_ZIP_BASE_LERP + POWERUP_ZIP_NEAR_LERP * zipFactor) * normDelta;
+      let lerp = (POWERUP_ZIP_BASE_LERP + POWERUP_ZIP_NEAR_LERP * zipFactor) * normDelta;
+      const ramp = powerupZipFactorRef.current.get(p.id)?.value ?? POWERUP_ZIP_RAMP_START;
+      lerp *= ramp;
       const move = Math.min(lerp, 1) * dist;
       const newX = p.x + dx * invDist * move;
       const newY = p.y + dy * invDist * move;
@@ -157,6 +165,14 @@ const PowerupUpdater = ({
         frameIndex: newFrameIndex,
         scale,
       });
+    }
+
+    for (const id of toRemove) {
+      const obj = powerupZipFactorRef.current.get(id);
+      if (obj) {
+        gsap.killTweensOf(obj);
+        powerupZipFactorRef.current.delete(id);
+      }
     }
 
     powerupPositionsRef.current.clear();
@@ -391,16 +407,19 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
         const currentEnemies = enemiesRef.current;
         const hitEnemy = currentEnemies.find((e) => e.id === enemyId);
         if (!hitEnemy) return;
-        const row0 = hitEnemy.gridRow;
-        const inRow = currentEnemies
-          .filter((e) => !e.isExploding && e.gridRow === row0)
-          .sort((a, b) => a.gridCol - b.gridCol);
-        const hitIndex = inRow.findIndex((e) => e.id === enemyId);
+
+        // Line gun: kill a vertical line of enemies straight up (same column, decreasing row).
+        const col0 = hitEnemy.gridCol;
+        const inColumnAbove = currentEnemies
+          .filter((e) => !e.isExploding && e.gridCol === col0 && e.gridRow <= hitEnemy.gridRow)
+          .sort((a, b) => b.gridRow - a.gridRow); // start from hit enemy, then move upward
+
         const LINE_GUN_MAX_ENEMIES = 3;
-        const start = Math.max(0, hitIndex - Math.floor((LINE_GUN_MAX_ENEMIES - 1) / 2));
-        const segment = inRow.slice(start, start + LINE_GUN_MAX_ENEMIES);
-        segment.forEach((e, i) => {
-          const delay = i * SPREADER_WAVE_DELAY_MS;
+        const toKill = inColumnAbove.slice(0, LINE_GUN_MAX_ENEMIES);
+
+        toKill.forEach((e) => {
+          const rowDelta = hitEnemy.gridRow - e.gridRow; // 0 for hit enemy, 1 for next up, etc.
+          const delay = rowDelta * SPREADER_WAVE_DELAY_MS;
           const run = () => triggerEnemyExplosionBatch([e.id]);
           if (delay === 0) run();
           else spreaderTimeoutsRef.current.push(setTimeout(run, delay));
@@ -561,13 +580,22 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     return () => window.removeEventListener("resize", recomputeOffset);
   }, [scale]);
 
-  const handlePlayerBulletHitEnemyBullet = useCallback((x: number, y: number, enemyBulletId: string) => {
+  const handlePlayerBulletHitEnemyBullet = useCallback((x: number, y: number, enemyBulletId: string, isPowerupBullet: boolean) => {
     enemyFormationRef.current?.removeEnemyBullet(enemyBulletId);
-    if (gameState.isPowerupActive()) return;
+    // Both bullets are destroyed (player bullet already skipped in BulletManager). Spawn powerup only for green bullets.
+    if (!isPowerupBullet || gameState.isPowerupActive()) return;
+    const id = `powerup-${Date.now()}-${Math.random()}`;
+    const factorObj = { value: POWERUP_ZIP_RAMP_START };
+    powerupZipFactorRef.current.set(id, factorObj);
+    gsap.to(factorObj, {
+      value: 1,
+      duration: POWERUP_ZIP_RAMP_DURATION_S,
+      ease: "expo.in",
+    });
     setPowerups((prev) => [
       ...prev,
       {
-        id: `powerup-${Date.now()}-${Math.random()}`,
+        id,
         x,
         y,
         frameIndex: 0,
@@ -578,6 +606,11 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   }, []);
 
   const handlePlayerBulletHitPowerup = useCallback((powerupId: string) => {
+    const obj = powerupZipFactorRef.current.get(powerupId);
+    if (obj) {
+      gsap.killTweensOf(obj);
+      powerupZipFactorRef.current.delete(powerupId);
+    }
     setPowerups((prev) => {
       const p = prev.find((x) => x.id === powerupId);
       if (p) {
@@ -605,12 +638,14 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
 
   // Pass enemy positions to BulletManager (refs are updated by enemies themselves)
   const enemyPositionsRef = useRef<Map<string, IPosition>>(new Map());
-  const enemyBulletPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const enemyBulletPositionsRef = useRef<Map<string, { x: number; y: number; isPowerupBullet?: boolean }>>(new Map());
   const enemyFormationRef = useRef<EnemyFormationRef>(null);
 
   // Powerups spawned when player bullet hits enemy bullet
   const [powerups, setPowerups] = useState<PowerupData[]>([]);
   const powerupPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  /** GSAP-driven speed ramp per powerup: value 0.2→1 over 0.25s (smooth slow-then-zip curve). */
+  const powerupZipFactorRef = useRef<Map<string, { value: number }>>(new Map());
 
   useEffect(() => {
     // Create map of enemy ID to position ref
@@ -713,6 +748,7 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
             setPowerups={setPowerups}
             playerPositionRef={playerPositionRef}
             powerupPositionsRef={powerupPositionsRef}
+            powerupZipFactorRef={powerupZipFactorRef}
           />
           {powerups.map((p) => (
             <Powerup

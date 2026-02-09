@@ -7,6 +7,8 @@ interface ControlsContextType {
   isShootHeld: ReturnType<typeof useControls>['isShootHeld'];
   setJoystickDirection: ReturnType<typeof useControls>['setJoystickDirection'];
   setJoystickRun: ReturnType<typeof useControls>['setJoystickRun'];
+   startMobileShoot: ReturnType<typeof useControls>['startMobileShoot'];
+   stopMobileShoot: ReturnType<typeof useControls>['stopMobileShoot'];
   triggerMobileShoot: ReturnType<typeof useControls>['triggerMobileShoot'];
   shotCooldownInfo: ReturnType<typeof useControls>['shotCooldownInfo'];
   notifyShotFired: ReturnType<typeof useControls>['notifyShotFired'];

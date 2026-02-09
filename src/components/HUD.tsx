@@ -17,6 +17,7 @@ interface HUDProps {
 const HUD = ({ showDebugInfo = false }: HUDProps) => {
   const [state, setState] = useState<IGameStateData>(gameState.getState());
   const extraLifeRef = useRef<HTMLDivElement | null>(null);
+  const powerupRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // Subscribe to game state changes
@@ -49,6 +50,28 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
       tween.kill();
     };
   }, [state.showExtraLifeMessage]);
+
+  // Powerup toast: similar float-up animation, shows name of granted gun
+  useEffect(() => {
+    if (!state.showPowerupMessage) return;
+    const el = powerupRef.current;
+    if (!el) return;
+
+    gsap.killTweensOf(el);
+    gsap.set(el, { y: 0, opacity: 1 });
+
+    const tween = gsap.to(el, {
+      y: -72,
+      opacity: 0,
+      duration: 2,
+      ease: 'power2.out',
+      overwrite: true,
+    });
+
+    return () => {
+      tween.kill();
+    };
+  }, [state.showPowerupMessage]);
 
   // Format score with leading zeros (classic arcade style)
   const formatScore = (score: number): string => {
@@ -135,6 +158,15 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
       {state.showExtraLifeMessage && (
         <div ref={extraLifeRef} className="extra-life-toast">
           <span className="extra-life-toast-text">+1 LIFE</span>
+        </div>
+      )}
+
+      {/* Powerup toast: shows name of the gun we just got */}
+      {state.showPowerupMessage && (
+        <div ref={powerupRef} className="powerup-toast">
+          <span className="powerup-toast-text">
+            {BULLET_TYPES[state.powerupBulletTypeToast ?? state.effectiveBulletType]?.name ?? 'POWER-UP'}
+          </span>
         </div>
       )}
     </div>

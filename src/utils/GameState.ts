@@ -33,6 +33,10 @@ export interface IGameStateData {
   totalEnemies: number;
   extraLifeAwarded: boolean;
   showExtraLifeMessage: boolean; // true only briefly after awarding, so message doesn't reappear next wave
+  /** True briefly after granting a weapon powerup so HUD can show a toast. */
+  showPowerupMessage: boolean;
+  /** Bullet type key for the most recently granted powerup (for HUD display). */
+  powerupBulletTypeToast: string | null;
   shotsfired: number;
   hits: number;
   kingsModeEnabled: boolean; // Executive Order: god mode (no damage)
@@ -67,6 +71,14 @@ export class GameState {
   private extraLifeAwarded: boolean = false;
   private showExtraLifeMessage: boolean = false;
   private extraLifeMessageTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  // Tracking for weapon powerup toast
+  private showPowerupMessage: boolean = false;
+  private powerupBulletTypeToast: string | null = null;
+  private powerupMessageTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  // Tracking for shot-limited powerups (e.g. heavyMachineGun)
+  private powerupShotsRemaining: number | null = null;
 
   // Statistics
   private shotsfired: number = 0;
@@ -115,6 +127,7 @@ export class GameState {
    */
   public initGame(totalEnemies: number): void {
     this.clearExtraLifeMessageTimeout();
+    this.clearPowerupMessageTimeout();
     this.clearPowerupExpiryTimeout();
     this.score = 0;
     this.lives = GAME_CONSTANTS.STARTING_LIVES;
@@ -123,6 +136,9 @@ export class GameState {
     this.totalEnemies = totalEnemies;
     this.extraLifeAwarded = false;
     this.showExtraLifeMessage = false;
+    this.showPowerupMessage = false;
+    this.powerupBulletTypeToast = null;
+    this.powerupShotsRemaining = null;
     this.shotsfired = 0;
     this.hits = 0;
     this.notifyStateChange();
@@ -134,6 +150,9 @@ export class GameState {
   public initWave(totalEnemies: number): void {
     this.clearExtraLifeMessageTimeout();
     this.showExtraLifeMessage = false;
+    this.clearPowerupMessageTimeout();
+    this.showPowerupMessage = false;
+    this.powerupBulletTypeToast = null;
     this.wave++;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
@@ -147,6 +166,10 @@ export class GameState {
   public resetCurrentWave(totalEnemies: number): void {
     this.clearExtraLifeMessageTimeout();
     this.showExtraLifeMessage = false;
+    this.clearPowerupMessageTimeout();
+    this.showPowerupMessage = false;
+    this.powerupBulletTypeToast = null;
+    this.powerupShotsRemaining = null;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
     this.notifyStateChange();
@@ -274,6 +297,8 @@ export class GameState {
       totalEnemies: this.totalEnemies,
       extraLifeAwarded: this.extraLifeAwarded,
       showExtraLifeMessage: this.showExtraLifeMessage,
+      showPowerupMessage: this.showPowerupMessage,
+      powerupBulletTypeToast: this.powerupBulletTypeToast,
       shotsfired: this.shotsfired,
       hits: this.hits,
       kingsModeEnabled: this.kingsModeEnabled,
@@ -290,6 +315,13 @@ export class GameState {
     if (this.extraLifeMessageTimeoutId !== null) {
       clearTimeout(this.extraLifeMessageTimeoutId);
       this.extraLifeMessageTimeoutId = null;
+    }
+  }
+
+  private clearPowerupMessageTimeout(): void {
+    if (this.powerupMessageTimeoutId !== null) {
+      clearTimeout(this.powerupMessageTimeoutId);
+      this.powerupMessageTimeoutId = null;
     }
   }
 
@@ -434,18 +466,28 @@ export class GameState {
 
   /**
    * Get selected weapon (bullet type key from BULLET_TYPES).
-   * If a powerup override is active (within duration), that type is returned instead.
+   * If a powerup override is active (time- or shot-based), that type is returned instead.
    */
   public getSelectedBulletType(): string {
     const now = Date.now();
-    if (
-      this.powerupBulletTypeOverride != null &&
-      now < this.powerupOverrideExpiry
-    ) {
-      return this.powerupBulletTypeOverride;
-    }
-    if (now >= this.powerupOverrideExpiry && this.powerupBulletTypeOverride != null) {
-      this.powerupBulletTypeOverride = null;
+    if (this.powerupBulletTypeOverride != null) {
+      // Shot-limited powerups (e.g. heavyMachineGun)
+      if (this.powerupShotsRemaining != null) {
+        if (this.powerupShotsRemaining > 0) {
+          return this.powerupBulletTypeOverride;
+        }
+        // Shots exhausted: clear override
+        this.powerupBulletTypeOverride = null;
+        this.powerupShotsRemaining = null;
+      } else {
+        // Time-limited powerups (e.g. spreader)
+        if (now < this.powerupOverrideExpiry) {
+          return this.powerupBulletTypeOverride;
+        }
+        if (now >= this.powerupOverrideExpiry) {
+          this.powerupBulletTypeOverride = null;
+        }
+      }
     }
     return this.selectedBulletType;
   }
@@ -460,25 +502,49 @@ export class GameState {
     }
     if (this.powerupBulletTypeOverride != null) {
       this.powerupBulletTypeOverride = null;
+      this.powerupShotsRemaining = null;
       this.notifyStateChange();
     }
   }
 
   /**
-   * Set temporary bullet type from powerup (e.g. for 3 seconds).
+   * Set temporary bullet type from powerup.
+   * - For most powerups (e.g. spreader) this is time-based (durationMs).
+   * - For heavyMachineGun this is shot-based (50 shots).
    */
   public setPowerupBulletType(bulletType: string, durationMs: number): void {
     if (this.powerupExpiryTimeoutId != null) {
       clearTimeout(this.powerupExpiryTimeoutId);
       this.powerupExpiryTimeoutId = null;
     }
+    // Powerup weapon override
     this.powerupBulletTypeOverride = bulletType;
-    this.powerupOverrideExpiry = Date.now() + durationMs;
-    this.powerupExpiryTimeoutId = setTimeout(() => {
-      this.powerupExpiryTimeoutId = null;
-      this.powerupBulletTypeOverride = null;
+
+    if (bulletType === 'heavyMachineGun') {
+      // Shot-limited powerup: 50 shots, no time limit.
+      this.powerupShotsRemaining = 10;
+      this.powerupOverrideExpiry = 0;
+    } else {
+      // Time-limited powerup (e.g. spreader)
+      this.powerupShotsRemaining = null;
+      this.powerupOverrideExpiry = Date.now() + durationMs;
+      this.powerupExpiryTimeoutId = setTimeout(() => {
+        this.powerupExpiryTimeoutId = null;
+        this.powerupBulletTypeOverride = null;
+        this.notifyStateChange();
+      }, durationMs);
+    }
+
+    // Powerup toast (HUD)
+    this.clearPowerupMessageTimeout();
+    this.powerupBulletTypeToast = bulletType;
+    this.showPowerupMessage = true;
+    this.powerupMessageTimeoutId = setTimeout(() => {
+      this.powerupMessageTimeoutId = null;
+      this.showPowerupMessage = false;
       this.notifyStateChange();
-    }, durationMs);
+    }, 2200); // Slightly longer than HUD animation
+
     this.notifyStateChange();
   }
 
@@ -487,9 +553,25 @@ export class GameState {
    */
   public isPowerupActive(): boolean {
     const now = Date.now();
-    return (
-      this.powerupBulletTypeOverride != null && now < this.powerupOverrideExpiry
-    );
+    if (this.powerupBulletTypeOverride == null) return false;
+    if (this.powerupShotsRemaining != null) {
+      return this.powerupShotsRemaining > 0;
+    }
+    return now < this.powerupOverrideExpiry;
+  }
+
+  /**
+   * Notify GameState that the player has fired a shot.
+   * Used to decrement shot-limited powerups like heavyMachineGun.
+   */
+  public handlePlayerShotFired(): void {
+    if (this.powerupBulletTypeOverride === 'heavyMachineGun' && this.powerupShotsRemaining != null) {
+      this.powerupShotsRemaining = Math.max(0, this.powerupShotsRemaining - 1);
+      if (this.powerupShotsRemaining === 0) {
+        this.powerupBulletTypeOverride = null;
+      }
+      this.notifyStateChange();
+    }
   }
 
   /**

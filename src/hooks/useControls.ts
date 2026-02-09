@@ -102,18 +102,24 @@ export const useControls = () => {
     setMobileRun(isRunning);
   }, [])
 
-  // Method to trigger shoot from mobile button
-  const triggerMobileShoot = useCallback(() => {
+  // Start/stop shoot for mobile button (press-and-hold friendly)
+  const startMobileShoot = useCallback(() => {
     setShootPressed(true);
-    setHeldActions((prev) => {
-      return prev.includes('SHOOT') ? prev : ['SHOOT', ...prev];
-    });
-    
-    // Auto-release after a short delay
+    setHeldActions((prev) => (prev.includes('SHOOT') ? prev : ['SHOOT', ...prev]));
+  }, []);
+
+  const stopMobileShoot = useCallback(() => {
+    setHeldActions((prev) => prev.filter((action) => action !== 'SHOOT'));
+  }, []);
+
+  // Legacy single-tap trigger (e.g., keyboard/mouse or other callers)
+  const triggerMobileShoot = useCallback(() => {
+    startMobileShoot();
+    // Auto-release after a short delay for tap-style input
     setTimeout(() => {
-      setHeldActions((prev) => prev.filter((action) => action !== 'SHOOT'));
+      stopMobileShoot();
     }, 100);
-  }, [])
+  }, [startMobileShoot, stopMobileShoot])
 
   // Check if shoot was pressed and consume the event
   const consumeShootPress = useCallback(() => {
@@ -139,6 +145,8 @@ export const useControls = () => {
     isShootHeld, 
     setJoystickDirection, 
     setJoystickRun, 
+    startMobileShoot,
+    stopMobileShoot,
     triggerMobileShoot,
     shotCooldownInfo,
     notifyShotFired,

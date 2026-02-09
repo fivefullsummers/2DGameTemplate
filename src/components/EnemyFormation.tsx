@@ -310,8 +310,17 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
 
     // Handle explosion animations (separate explosion sprites)
     const EXPLOSION_STUCK_MS = 2500; // Force-remove if explosion never completes (e.g. delta/tick issues)
+    const enemyIdSet = new Set(enemies.map((e) => e.id));
+
     enemies.forEach((enemy) => {
       if (!enemy.isExploding) return;
+
+      // Already finished: we called onEnemyRemove but React hasn't re-rendered yet. Skip so we
+      // don't re-create explosion state/sprite and get a stuck death frame.
+      let expState = explosionState.current.get(enemy.id);
+      if (expState && expState.frameIndex >= EXPLOSION_FRAME_SEQUENCE.length) {
+        return;
+      }
 
       // Remove main enemy sprite immediately so it never lingers or moves with formation
       const mainSprite = enemySpriteMapRef.current.get(enemy.id);
@@ -322,7 +331,6 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
       }
 
       // Ensure explosion state exists (tick may run before next render)
-      let expState = explosionState.current.get(enemy.id);
       if (!expState) {
         expState = { frameIndex: 0, frameAccumulator: 0, startedAt: Date.now() };
         explosionState.current.set(enemy.id, expState);
@@ -338,7 +346,7 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
           explosionSpriteMapRef.current.delete(enemy.id);
         }
         onEnemyRemove(enemy.id);
-        explosionState.current.delete(enemy.id);
+        expState.frameIndex = EXPLOSION_FRAME_SEQUENCE.length; // mark finished so next tick skips
         return;
       }
 
@@ -359,7 +367,7 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
               explosionSpriteMapRef.current.delete(enemy.id);
             }
             onEnemyRemove(enemy.id);
-            explosionState.current.delete(enemy.id);
+            expState.frameIndex = EXPLOSION_FRAME_SEQUENCE.length; // mark finished so next tick skips
             return;
           }
         }
@@ -387,6 +395,24 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
         expSprite.x = enemy.positionRef.current.x;
         expSprite.y = enemy.positionRef.current.y;
         expSprite.texture = texture;
+      }
+    });
+
+    // Clean up explosion state and sprites for enemies no longer in the array (React removed them)
+    const explosionIdsToClean = new Set<string>();
+    explosionState.current.forEach((_, id) => {
+      if (!enemyIdSet.has(id)) explosionIdsToClean.add(id);
+    });
+    explosionSpriteMapRef.current.forEach((_, id) => {
+      if (!enemyIdSet.has(id)) explosionIdsToClean.add(id);
+    });
+    explosionIdsToClean.forEach((id) => {
+      explosionState.current.delete(id);
+      const expSprite = explosionSpriteMapRef.current.get(id);
+      if (expSprite && container) {
+        container.removeChild(expSprite);
+        expSprite.destroy();
+        explosionSpriteMapRef.current.delete(id);
       }
     });
 

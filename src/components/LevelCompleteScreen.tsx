@@ -2,6 +2,7 @@ import { Container, Stage, Text } from "@pixi/react";
 import { useState, useMemo } from "react";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { gameState } from "../utils/GameState";
@@ -181,6 +182,9 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
           }}
         />
       </Container>
+
+      {/* Full-screen CRT overlay */}
+      <CRTOverlay width={width} height={height} />
     </Stage>
   );
 };

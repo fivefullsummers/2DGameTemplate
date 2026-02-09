@@ -2,6 +2,7 @@ import { Container, Stage, Text } from "@pixi/react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { gameState, type GameDifficulty } from "../utils/GameState";
@@ -300,6 +301,8 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
           }}
         />
       </Container>
+
+        <CRTOverlay width={width} height={height} />
       </Stage>
 
       {/* Weapon dropdown: HTML overlay outside Stage so Pixi reconciler doesn't touch DOM */}

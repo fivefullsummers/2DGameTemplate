@@ -2,6 +2,7 @@ import { Container, Stage, Text } from "@pixi/react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { getSoundEnabled, setSoundEnabled } from "../utils/soundSettings";
@@ -239,6 +240,8 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
           }}
         />
       </Container>
+
+      <CRTOverlay width={width} height={height} />
     </Stage>
 
       {showPasskeyPopup && (

@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from "react";
 import * as PIXI from "pixi.js";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { PLAYER_CONFIGS } from "../consts/players";
@@ -90,6 +91,7 @@ const PreGameContent = ({
 }) => {
   const [tick, setTick] = useState(0);
   const [hoverReady, setHoverReady] = useState(false);
+  const [hoverBack, setHoverBack] = useState(false);
   useTick(() => setTick((t) => t + 1));
 
   const playerConfig = PLAYER_CONFIGS[selectedPlayerId];
@@ -126,11 +128,34 @@ const PreGameContent = ({
         fontFamily: "Neopixel",
         fontSize: 14,
         fontWeight: "bold",
-        fill: hoverReady ? 0x111111 : 0x000000,
-        stroke: 0xffffff,
-        strokeThickness: 2,
+        fill: hoverReady ? "#00ff88" : "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 4,
+        dropShadow: true,
+        dropShadowColor: "#000000",
+        dropShadowBlur: 4,
+        dropShadowAngle: Math.PI / 6,
+        dropShadowDistance: 3,
       }),
     [hoverReady]
+  );
+
+  const backButtonStyle = useMemo(
+    () =>
+      new TextStyle({
+        fontFamily: "Neopixel",
+        fontSize: 14,
+        fontWeight: "bold",
+        fill: hoverBack ? "#00ff88" : "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 4,
+        dropShadow: true,
+        dropShadowColor: "#000000",
+        dropShadowBlur: 4,
+        dropShadowAngle: Math.PI / 6,
+        dropShadowDistance: 3,
+      }),
+    [hoverBack]
   );
 
   if (!enemyConfig) return null;
@@ -200,19 +225,11 @@ const PreGameContent = ({
         pointerover={() => setHoverReady(true)}
         pointerout={() => setHoverReady(false)}
       >
-        <Sprite
-          texture={PIXI.Texture.WHITE}
-          width={140}
-          height={44}
-          anchor={0.5}
-          tint={0xffffff}
-          scale={{ x: 1, y: 1 }}
-        />
         <Text
           text="READY?"
           anchor={0.5}
           style={readyButtonStyle}
-          scale={{ x: hoverReady ? 1.05 : 1, y: hoverReady ? 1.05 : 1 }}
+          scale={{ x: hoverReady ? 1.1 : 1, y: hoverReady ? 1.1 : 1 }}
         />
       </Container>
 
@@ -227,8 +244,15 @@ const PreGameContent = ({
             if (clickSfx) clickSfx.play({ volume: 0.4 });
             onBack();
           }}
+          pointerover={() => setHoverBack(true)}
+          pointerout={() => setHoverBack(false)}
         >
-          <Text text="BACK" anchor={0.5} style={missionLineStyle} />
+          <Text
+            text="BACK"
+            anchor={0.5}
+            style={backButtonStyle}
+            scale={{ x: hoverBack ? 1.1 : 1, y: hoverBack ? 1.1 : 1 }}
+          />
         </Container>
       )}
     </>
@@ -256,6 +280,7 @@ const PreGameScreen = ({
         onReady={onReady}
         onBack={onBack}
       />
+      <CRTOverlay width={width} height={height} />
     </Stage>
   );
 };

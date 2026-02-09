@@ -85,8 +85,10 @@ function RetroScanlinesPopup({
   }, [uScan, uWarp]);
   const handleDone = () => {
     playClick();
-    onSettingsChange({ uScan: scan, uWarp: warp });
     onClose();
+    requestAnimationFrame(() => {
+      onSettingsChange({ uScan: scan, uWarp: warp });
+    });
   };
   return (
     <div
@@ -166,8 +168,10 @@ function MotionBlurPopup({
   }, [settings.strength, settings.decaySpeed, settings.rampSpeed, settings.movementScale]);
   const handleDone = () => {
     playClick();
-    onSettingsChange({ strength, decaySpeed: decaySpeed, rampSpeed, movementScale });
     onClose();
+    requestAnimationFrame(() => {
+      onSettingsChange({ strength, decaySpeed: decaySpeed, rampSpeed, movementScale });
+    });
   };
   return (
     <div

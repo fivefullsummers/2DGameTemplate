@@ -12,6 +12,7 @@ import {
   ENEMY_TYPE_IDS,
   DEFAULT_ENEMY_TYPE_ID,
 } from "../consts/enemy-types";
+import { useVisualSettings } from "../contexts/VisualSettingsContext";
 
 const HERO_FRAME_WIDTH = 512;
 const ENEMY_FRAME_WIDTH = 512;
@@ -266,6 +267,7 @@ const PreGameScreen = ({
   onBack,
 }: PreGameScreenProps) => {
   const { width, height } = useDimensions();
+  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
   const effectiveEnemyTypeId = ENEMY_TYPE_IDS.includes(enemyTypeId)
     ? enemyTypeId
     : DEFAULT_ENEMY_TYPE_ID;
@@ -280,7 +282,14 @@ const PreGameScreen = ({
         onReady={onReady}
         onBack={onBack}
       />
-      <CRTOverlay width={width} height={height} />
+      {retroScanlinesEnabled && (
+        <CRTOverlay
+          width={width}
+          height={height}
+          uScan={crtSettings.uScan}
+          uWarp={crtSettings.uWarp}
+        />
+      )}
     </Stage>
   );
 };

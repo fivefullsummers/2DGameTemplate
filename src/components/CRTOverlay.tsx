@@ -7,6 +7,10 @@ import fragmentShader from "../shaders/crt/fragment.glsl?raw";
 interface CRTOverlayProps {
   width: number;
   height: number;
+  /** Scanline darkness (0–2). Default 0.75. */
+  uScan?: number;
+  /** Barrel warp/curvature (0–1). Default 0. */
+  uWarp?: number;
 }
 
 /**
@@ -14,7 +18,7 @@ interface CRTOverlayProps {
  * Renders black scanlines, grille, curvature vignette, and subtle noise
  * on top of the existing scene without re-rendering the game into a texture.
  */
-const CRTOverlay = ({ width, height }: CRTOverlayProps) => {
+const CRTOverlay = ({ width, height, uScan = 0.30, uWarp = 0 }: CRTOverlayProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);
 
@@ -55,13 +59,13 @@ const CRTOverlay = ({ width, height }: CRTOverlayProps) => {
       program,
       uniforms: {
         uResolution: new Float32Array([width, height]),
-        uWarp: 0.00, // curvature (0 = off, >0 = more warp)
-        uScan: 0.75, // scanline darkness (from reference shader)
+        uWarp,
+        uScan,
       },
     });
 
     return meshMaterial;
-  }, [width, height]);
+  }, [width, height, uScan, uWarp]);
 
   // Attach mesh to container and keep geometry in sync with viewport size
   useEffect(() => {

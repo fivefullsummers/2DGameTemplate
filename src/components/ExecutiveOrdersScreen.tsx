@@ -7,6 +7,7 @@ import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { gameState, type GameDifficulty } from "../utils/GameState";
 import { BULLET_TYPES } from "../consts/bullet-config";
+import { useVisualSettings } from "../contexts/VisualSettingsContext";
 import "./ExecutiveOrdersScreen.css";
 
 interface ExecutiveOrdersScreenProps {
@@ -17,6 +18,7 @@ const BULLET_TYPE_KEYS = Object.keys(BULLET_TYPES) as string[];
 
 const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
   const { width, height } = useDimensions();
+  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
   const [hoverButton, setHoverButton] = useState<"back" | "kings" | "bigred" | "diff-i" | "diff-o" | "diff-u" | null>(null);
   const [kingsMode, setKingsMode] = useState(gameState.getKingsMode());
   const [bigRedButtonEnabled, setBigRedButtonEnabled] = useState(gameState.getBigRedButtonEnabled());
@@ -302,7 +304,14 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
         />
       </Container>
 
-        <CRTOverlay width={width} height={height} />
+        {retroScanlinesEnabled && (
+          <CRTOverlay
+            width={width}
+            height={height}
+            uScan={crtSettings.uScan}
+            uWarp={crtSettings.uWarp}
+          />
+        )}
       </Stage>
 
       {/* Weapon dropdown: HTML overlay outside Stage so Pixi reconciler doesn't touch DOM */}

@@ -6,6 +6,7 @@ import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { gameState } from "../utils/GameState";
+import { useVisualSettings } from "../contexts/VisualSettingsContext";
 
 interface LevelCompleteScreenProps {
   onNextLevel: () => void;
@@ -15,6 +16,7 @@ interface LevelCompleteScreenProps {
 
 const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScreenProps) => {
   const { width, height } = useDimensions();
+  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
   const [hoverButton, setHoverButton] = useState<"next" | "replay" | "exit" | null>(null);
 
   const state = gameState.getState();
@@ -183,8 +185,14 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
         />
       </Container>
 
-      {/* Full-screen CRT overlay */}
-      <CRTOverlay width={width} height={height} />
+      {retroScanlinesEnabled && (
+        <CRTOverlay
+          width={width}
+          height={height}
+          uScan={crtSettings.uScan}
+          uWarp={crtSettings.uWarp}
+        />
+      )}
     </Stage>
   );
 };

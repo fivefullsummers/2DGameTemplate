@@ -47,6 +47,7 @@ import {
   updateColorSmearDirection,
   type ColorSmearFilterOptions,
 } from "../filters/ColorSmearFilter";
+import { useVisualSettings } from "../contexts/VisualSettingsContext";
 
 const SHAKE_AMPLITUDE_PX = 3;
 const SHAKE_SPREADER_AMPLITUDE_PX = 7;
@@ -271,6 +272,12 @@ const ColorSmearUpdater = ({
 
 const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentProps) => {
   const { width, height, scale } = useDimensions();
+  const {
+    motionBlurEnabled,
+    motionBlurSettings,
+    retroScanlinesEnabled,
+    crtSettings,
+  } = useVisualSettings();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
   const bulletManagerRef = useRef<BulletManagerRef>(null);
   const playerPositionRef = useRef<IPosition>({ x: 0, y: 0 });
@@ -765,12 +772,17 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
 
   const colorSmearOptions: ColorSmearFilterOptions = useMemo(
     () => ({
-      strength: 12,
-      decaySpeed: COLOR_SMEAR_DECAY_SPEED,
-      rampSpeed: COLOR_SMEAR_RAMP_SPEED,
-      movementScale: COLOR_SMEAR_MOVEMENT_SCALE,
+      strength: motionBlurSettings.strength,
+      decaySpeed: motionBlurSettings.decaySpeed,
+      rampSpeed: motionBlurSettings.rampSpeed,
+      movementScale: motionBlurSettings.movementScale,
     }),
-    []
+    [
+      motionBlurSettings.strength,
+      motionBlurSettings.decaySpeed,
+      motionBlurSettings.rampSpeed,
+      motionBlurSettings.movementScale,
+    ]
   );
 
   const colorSmearFilter = useMemo(() => {
@@ -840,7 +852,11 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
               powerupPositionsRef={powerupPositionsRef}
               onPlayerBulletHitPowerup={handlePlayerBulletHitPowerup}
             />
-            <Container filters={colorSmearFilter ? [colorSmearFilter] : undefined}>
+            <Container
+              filters={
+                motionBlurEnabled && colorSmearFilter ? [colorSmearFilter] : undefined
+              }
+            >
               <PlayerAnimated
                 bulletManagerRef={bulletManagerRef}
                 gunType="spreader"
@@ -854,7 +870,13 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
                 onExitComplete={handlePlayerExitComplete}
               />
             </Container>
-            <Container filters={enemyColorSmearFilter ? [enemyColorSmearFilter] : undefined}>
+            <Container
+              filters={
+                motionBlurEnabled && enemyColorSmearFilter
+                  ? [enemyColorSmearFilter]
+                  : undefined
+              }
+            >
               <EnemyFormation
                 ref={enemyFormationRef}
                 enemies={enemies}
@@ -917,18 +939,25 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
         />
       </div>
       {/* Full-screen CRT overlay over gameplay AND mobile controls (non-interactive layer). */}
-      <Stage
-        width={width}
-        height={height}
-        options={{ backgroundAlpha: 0 }}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-        }}
-      >
-        <CRTOverlay width={width} height={height} />
-      </Stage>
+      {retroScanlinesEnabled && (
+        <Stage
+          width={width}
+          height={height}
+          options={{ backgroundAlpha: 0 }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+          }}
+        >
+          <CRTOverlay
+            width={width}
+            height={height}
+            uScan={crtSettings.uScan}
+            uWarp={crtSettings.uWarp}
+          />
+        </Stage>
+      )}
     </div>
   );
 };

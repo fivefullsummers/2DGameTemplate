@@ -5,6 +5,7 @@ import StartScreenBackground from "./StartScreenBackground";
 import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
+import { useVisualSettings } from "../contexts/VisualSettingsContext";
 
 interface StartScreenProps {
   onStartGame: () => void;
@@ -13,6 +14,7 @@ interface StartScreenProps {
 
 const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
   const { width, height } = useDimensions();
+  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
   const [isHovering, setIsHovering] = useState(false);
   const [isOptionsHovering, setIsOptionsHovering] = useState(false);
   const [titleScale, setTitleScale] = useState(1 / 2);
@@ -152,8 +154,14 @@ const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
         />
       </Container>
 
-      {/* Full-screen CRT overlay (same size as StartScreenBackground) */}
-      <CRTOverlay width={width} height={height} />
+      {retroScanlinesEnabled && (
+        <CRTOverlay
+          width={width}
+          height={height}
+          uScan={crtSettings.uScan}
+          uWarp={crtSettings.uWarp}
+        />
+      )}
     </Stage>
   );
 };

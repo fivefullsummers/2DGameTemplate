@@ -12,6 +12,7 @@ import { useAssetLoader } from "./hooks/useAssetLoader"
 import { GAME_CONSTANTS, gameState } from "./utils/GameState"
 import { ENEMY_TYPE_IDS } from "./consts/enemy-types"
 import { applyStoredSoundPreference } from "./utils/soundSettings"
+import { VisualSettingsProvider } from "./contexts/VisualSettingsContext"
 
 type GameState = 'menu' | 'options' | 'executiveOrders' | 'playerSelect' | 'preGame' | 'playing' | 'gameOver' | 'levelComplete';
 
@@ -110,58 +111,47 @@ export const App = () => {
     return <LoadingScreen progress={progress} currentAsset={currentAsset} error={error} />;
   }
 
-  if (currentGameState === 'menu') {
-    return <StartScreen onStartGame={handleStartGame} onOpenOptions={handleOpenOptions} />;
-  }
-
-  if (currentGameState === 'playerSelect') {
-    return (
-      <PlayerSelectScreen
-        onContinue={handlePlayerSelectContinue}
-        onBack={handleBackFromPlayerSelect}
-      />
-    );
-  }
-
-  if (currentGameState === 'preGame') {
-    return (
-      <PreGameScreen
-        selectedPlayerId={gameState.getSelectedPlayerId()}
-        enemyTypeId={gameState.getSelectedEnemyTypeId()}
-        onReady={handlePreGameReady}
-        onBack={handleBackFromPreGame}
-      />
-    );
-  }
-
-  if (currentGameState === 'options') {
-    return (
-      <OptionsScreen
-        onBack={handleOptionsBack}
-        onOpenExecutiveOrders={handleOpenExecutiveOrders}
-      />
-    );
-  }
-
-  if (currentGameState === 'executiveOrders') {
-    return <ExecutiveOrdersScreen onBack={handleExecutiveOrdersBack} />;
-  }
-
-  if (currentGameState === 'gameOver') {
-    return <GameOverScreen onPlayAgain={handlePlayAgain} onMainMenu={handleMainMenu} />;
-  }
-
-  if (currentGameState === 'levelComplete') {
-    return (
-      <LevelCompleteScreen
-        onNextLevel={handleNextLevel}
-        onReplay={handleReplayLevel}
-        onExit={handleExitFromLevelComplete}
-      />
-    );
-  }
-
-  return <>
-    <Experience onGameOver={handleGameOver} onLevelComplete={handleLevelComplete} />
-  </>
+  return (
+    <VisualSettingsProvider>
+      {currentGameState === "menu" && (
+        <StartScreen onStartGame={handleStartGame} onOpenOptions={handleOpenOptions} />
+      )}
+      {currentGameState === "playerSelect" && (
+        <PlayerSelectScreen
+          onContinue={handlePlayerSelectContinue}
+          onBack={handleBackFromPlayerSelect}
+        />
+      )}
+      {currentGameState === "preGame" && (
+        <PreGameScreen
+          selectedPlayerId={gameState.getSelectedPlayerId()}
+          enemyTypeId={gameState.getSelectedEnemyTypeId()}
+          onReady={handlePreGameReady}
+          onBack={handleBackFromPreGame}
+        />
+      )}
+      {currentGameState === "options" && (
+        <OptionsScreen
+          onBack={handleOptionsBack}
+          onOpenExecutiveOrders={handleOpenExecutiveOrders}
+        />
+      )}
+      {currentGameState === "executiveOrders" && (
+        <ExecutiveOrdersScreen onBack={handleExecutiveOrdersBack} />
+      )}
+      {currentGameState === "gameOver" && (
+        <GameOverScreen onPlayAgain={handlePlayAgain} onMainMenu={handleMainMenu} />
+      )}
+      {currentGameState === "levelComplete" && (
+        <LevelCompleteScreen
+          onNextLevel={handleNextLevel}
+          onReplay={handleReplayLevel}
+          onExit={handleExitFromLevelComplete}
+        />
+      )}
+      {currentGameState === "playing" && (
+        <Experience onGameOver={handleGameOver} onLevelComplete={handleLevelComplete} />
+      )}
+    </VisualSettingsProvider>
+  );
 }

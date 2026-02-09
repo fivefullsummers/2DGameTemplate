@@ -8,6 +8,7 @@ import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { PLAYER_CONFIGS, PLAYER_IDS, getWeaponDisplayName, DEFAULT_PLAYER_ID } from "../consts/players";
+import { useVisualSettings } from "../contexts/VisualSettingsContext";
 
 const CARD_WIDTH = 160;
 const MAX_CARD_HEIGHT = 220;
@@ -334,6 +335,7 @@ const PlayerSelectContent = ({
 
 const PlayerSelectScreen = ({ onContinue, onBack }: PlayerSelectScreenProps) => {
   const { width, height } = useDimensions();
+  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
   return (
     <Stage width={width} height={height}>
       <PlayerSelectContent
@@ -342,7 +344,14 @@ const PlayerSelectScreen = ({ onContinue, onBack }: PlayerSelectScreenProps) => 
         onContinue={onContinue}
         onBack={onBack}
       />
-      <CRTOverlay width={width} height={height} />
+      {retroScanlinesEnabled && (
+        <CRTOverlay
+          width={width}
+          height={height}
+          uScan={crtSettings.uScan}
+          uWarp={crtSettings.uWarp}
+        />
+      )}
     </Stage>
   );
 };

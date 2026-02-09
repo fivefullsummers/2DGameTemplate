@@ -86,15 +86,23 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
       </Container>
 
       {/* Stats */}
-      <Container x={width / 2} y={height / 2 - 20}>
+      <Container x={width / 2} y={height / 2 - 30}>
         <Text
-          text={`SCORE: ${state.score}`}
+          text={`TOTAL SCORE: ${state.score}`}
           anchor={0.5}
           style={statsStyle}
         />
       </Container>
 
-      <Container x={width / 2} y={height / 2 + 5}>
+      <Container x={width / 2} y={height / 2}>
+        <Text
+          text={`LEVEL SCORE: ${state.score - state.waveStartScore}`}
+          anchor={0.5}
+          style={statsStyle}
+        />
+      </Container>
+
+      <Container x={width / 2} y={height / 2 + 35}>
         <Text
           text={`WAVE: ${state.wave}`}
           anchor={0.5}

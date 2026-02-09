@@ -2,6 +2,7 @@ import { Container, Stage, Text } from "@pixi/react";
 import { useState, useCallback, useMemo } from "react";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 
@@ -150,6 +151,9 @@ const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
           scale={{ x: isOptionsHovering ? 1.1 : 1, y: isOptionsHovering ? 1.1 : 1 }}
         />
       </Container>
+
+      {/* Full-screen CRT overlay (same size as StartScreenBackground) */}
+      <CRTOverlay width={width} height={height} />
     </Stage>
   );
 };

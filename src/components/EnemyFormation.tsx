@@ -42,6 +42,12 @@ export interface EnemyFormationRef {
   removeEnemyBullet: (id: string) => void;
 }
 
+/** Ref written by formation when it moves horizontally; used to drive per-formation color smear (direction + rawMovement 0–1). */
+export interface FormationSmearRef {
+  direction: number;
+  rawMovement: number;
+}
+
 interface EnemyFormationProps {
   enemies: EnemyData[];
   /** Enemy type id for this wave (determines sprite, bullet, sound). */
@@ -51,6 +57,8 @@ interface EnemyFormationProps {
   onPlayerHit?: () => void;
   /** Optional ref to sync current enemy bullet positions (id -> {x,y,isPowerupBullet}) for player bullet collision. */
   enemyBulletPositionsRef?: React.RefObject<Map<string, { x: number; y: number; isPowerupBullet?: boolean }>>;
+  /** Optional ref to drive formation color smear (direction opposite to movement; rawMovement set when formation steps). */
+  formationSmearRef?: React.MutableRefObject<FormationSmearRef>;
 }
 
 /** Chance that a spawned enemy bullet is a green powerup bullet (shoot it to get a powerup). */
@@ -73,6 +81,7 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
   playerPositionRef,
   onPlayerHit,
   enemyBulletPositionsRef,
+  formationSmearRef,
 }, ref) {
   const enemyTypeConfig = useMemo(
     () => getEnemyTypeConfig(enemyTypeId) ?? getEnemyTypeConfig(DEFAULT_ENEMY_TYPE_ID)!,
@@ -398,6 +407,10 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
           }
           setDirection((prev) => (prev === 1 ? -1 : 1));
         } else {
+          if (formationSmearRef) {
+            formationSmearRef.current.direction = -direction;
+            formationSmearRef.current.rawMovement = 1;
+          }
           activeEnemies.forEach((enemy) => {
             enemy.positionRef.current.x += HORIZONTAL_STEP * direction;
             const animState = enemyAnimState.current.get(enemy.id);

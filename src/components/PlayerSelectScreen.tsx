@@ -4,6 +4,7 @@ import * as PIXI from "pixi.js";
 import { Graphics as PixiGraphics } from "pixi.js";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { PLAYER_CONFIGS, PLAYER_IDS, getWeaponDisplayName, DEFAULT_PLAYER_ID } from "../consts/players";
@@ -180,6 +181,7 @@ const PlayerSelectContent = ({
 }) => {
   const [selectedId, setSelectedId] = useState<string>(DEFAULT_PLAYER_ID);
   const [hoverContinue, setHoverContinue] = useState(false);
+  const [hoverBack, setHoverBack] = useState(false);
   const [tick, setTick] = useState(0);
   useTick(() => setTick((t) => t + 1));
 
@@ -201,7 +203,7 @@ const PlayerSelectContent = ({
     []
   );
 
-  const buttonStyle = useMemo(
+  const continueButtonStyle = useMemo(
     () =>
       new TextStyle({
         fontFamily: "Neopixel",
@@ -217,6 +219,24 @@ const PlayerSelectContent = ({
         dropShadowDistance: 3,
       }),
     [hoverContinue]
+  );
+
+  const backButtonStyle = useMemo(
+    () =>
+      new TextStyle({
+        fontFamily: "Neopixel",
+        fontSize: 14,
+        fontWeight: "bold",
+        fill: hoverBack ? "#00ff88" : "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 4,
+        dropShadow: true,
+        dropShadowColor: "#000000",
+        dropShadowBlur: 4,
+        dropShadowAngle: Math.PI / 6,
+        dropShadowDistance: 3,
+      }),
+    [hoverBack]
   );
 
   const handleContinue = useCallback(() => {
@@ -281,7 +301,7 @@ const PlayerSelectContent = ({
         <Text
           text="CONTINUE"
           anchor={0.5}
-          style={buttonStyle}
+          style={continueButtonStyle}
           scale={{ x: hoverContinue ? 1.1 : 1, y: hoverContinue ? 1.1 : 1 }}
         />
       </Container>
@@ -297,8 +317,15 @@ const PlayerSelectContent = ({
             if (clickSfx) clickSfx.play({ volume: 0.4 });
             onBack();
           }}
+          pointerover={() => setHoverBack(true)}
+          pointerout={() => setHoverBack(false)}
         >
-          <Text text="BACK" anchor={0.5} style={buttonStyle} />
+          <Text
+            text="BACK"
+            anchor={0.5}
+            style={backButtonStyle}
+            scale={{ x: hoverBack ? 1.1 : 1, y: hoverBack ? 1.1 : 1 }}
+          />
         </Container>
       )}
     </>
@@ -315,6 +342,7 @@ const PlayerSelectScreen = ({ onContinue, onBack }: PlayerSelectScreenProps) => 
         onContinue={onContinue}
         onBack={onBack}
       />
+      <CRTOverlay width={width} height={height} />
     </Stage>
   );
 };

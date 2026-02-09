@@ -2,6 +2,7 @@ import { Container, Stage, Text } from "@pixi/react";
 import { useState, useMemo, useEffect } from "react";
 import useDimensions from "../hooks/useDimensions";
 import ShaderBackground from "./ShaderBackground";
+import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { gameState } from "../utils/GameState";
@@ -211,6 +212,8 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
           }}
         />
       </Container>
+
+      <CRTOverlay width={width} height={height} />
     </Stage>
   );
 };

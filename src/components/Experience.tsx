@@ -1,4 +1,5 @@
 import { Container, Stage, useTick } from "@pixi/react";
+import * as PIXI from "pixi.js";
 import {
   TILE_SIZE,
   ENEMY_BULLET_HIT_RADIUS,
@@ -11,7 +12,7 @@ import useDimensions from "../hooks/useDimensions";
 
 // import HeroMouse from "./HeroMouse";
 import PlayerAnimated, { PlayerRef } from "./PlayerAnimated";
-import EnemyFormation, { EnemyFormationRef } from "./EnemyFormation";
+import EnemyFormation, { EnemyFormationRef, type FormationSmearRef } from "./EnemyFormation";
 import CollisionDebug from "./CollisionDebug";
 import EntityCollisionDebug from "./EntityCollisionDebug";
 import CollisionInfo from "./CollisionInfo";
@@ -35,16 +36,23 @@ import {
   POWERUP_FRAME_COUNT,
   POWERUP_SPRITE_FRAME_OFFSET,
 } from "../consts/bullet-config";
-import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
+import { PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 import PlaneBackground from "./PlaneBackground";
+import CRTOverlay from "./CRTOverlay";
 import MobileControlsBar from "./MobileControlsBar";
+import {
+  createColorSmearFilter,
+  updateColorSmearTime,
+  updateColorSmearMovement,
+  updateColorSmearDirection,
+  type ColorSmearFilterOptions,
+} from "../filters/ColorSmearFilter";
 
 const SHAKE_AMPLITUDE_PX = 3;
 const SHAKE_SPREADER_AMPLITUDE_PX = 7;
 const SHAKE_DURATION_MS = 100;
 /** Powerup weapon override lasts 2 seconds. */
 const POWERUP_DURATION_MS = 2000;
-const POWERUP_COLLISION_RADIUS = 14;
 /** Collect when powerup is within this distance of player (snap = meets player). */
 const POWERUP_COLLECT_RADIUS = 20;
 /** Zip-to-player: base lerp when far; adds more as we get close (exponential zip). Bias: faster. */
@@ -186,6 +194,80 @@ interface ExperienceContentProps {
   onGameOver: () => void;
   onLevelComplete: () => void;
 }
+
+// Tuning: smear only when player is moving; decay when stopped.
+const COLOR_SMEAR_MOVEMENT_SCALE = 1;   // world units per frame → movement 1
+const COLOR_SMEAR_DECAY_SPEED = 1.0;   // how fast smear fades when you stop
+const COLOR_SMEAR_RAMP_SPEED = 0.03;    // how fast smear appears when you move
+
+// Helper child that runs inside the PIXI Stage tree so useTick has context.
+const ColorSmearUpdater = ({
+  filterRef,
+  playerPositionRef,
+  prevPlayerPosRef,
+  movementSmoothedRef,
+  enemyFilterRef,
+  formationSmearRef,
+  enemyMovementSmoothedRef,
+}: {
+  filterRef: React.RefObject<PIXI.Filter | null>;
+  playerPositionRef: React.RefObject<IPosition>;
+  prevPlayerPosRef: React.MutableRefObject<IPosition>;
+  movementSmoothedRef: React.MutableRefObject<number>;
+  enemyFilterRef?: React.RefObject<PIXI.Filter | null>;
+  formationSmearRef?: React.MutableRefObject<FormationSmearRef>;
+  enemyMovementSmoothedRef?: React.MutableRefObject<number>;
+}) => {
+  const lastDirectionXRef = useRef(1);
+  const lastDirectionYRef = useRef(0);
+  const lastEnemyDirectionRef = useRef(1);
+  useTick((delta) => {
+    const filter = filterRef.current;
+    if (filter) {
+      updateColorSmearTime(filter, delta);
+      const prev = prevPlayerPosRef.current;
+      const curr = playerPositionRef.current;
+      const dx = curr.x - prev.x;
+      const dy = curr.y - prev.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      prevPlayerPosRef.current = { ...curr };
+      if (dist > 0.001) {
+        const movingX = Math.abs(dx) > 0.001;
+        const movingY = Math.abs(dy) > 0.001;
+        if (movingX) {
+          lastDirectionXRef.current = dx < 0 ? 1 : -1;
+          if (!movingY) lastDirectionYRef.current = 0;
+        }
+        if (movingY) {
+          lastDirectionYRef.current = dy < 0 ? 1 : -1;
+          if (!movingX) lastDirectionXRef.current = 0;
+        }
+      }
+      updateColorSmearDirection(filter, lastDirectionXRef.current, lastDirectionYRef.current);
+      const rawMovement = Math.min(dist / COLOR_SMEAR_MOVEMENT_SCALE, 1);
+      const smoothed = movementSmoothedRef.current;
+      const blend = rawMovement > smoothed ? COLOR_SMEAR_RAMP_SPEED : COLOR_SMEAR_DECAY_SPEED;
+      movementSmoothedRef.current = smoothed + (rawMovement - smoothed) * blend;
+      updateColorSmearMovement(filter, movementSmoothedRef.current);
+    }
+
+    if (enemyFilterRef?.current && formationSmearRef && enemyMovementSmoothedRef) {
+      const formation = formationSmearRef.current;
+      if (formation.rawMovement > 0) {
+        lastEnemyDirectionRef.current = formation.direction;
+      }
+      const rawEnemy = formation.rawMovement;
+      formation.rawMovement = 0;
+      updateColorSmearTime(enemyFilterRef.current, delta);
+      updateColorSmearDirection(enemyFilterRef.current, lastEnemyDirectionRef.current); // horizontal only
+      const smoothed = enemyMovementSmoothedRef.current;
+      const blend = rawEnemy > smoothed ? COLOR_SMEAR_RAMP_SPEED : COLOR_SMEAR_DECAY_SPEED;
+      enemyMovementSmoothedRef.current = smoothed + (rawEnemy - smoothed) * blend;
+      updateColorSmearMovement(enemyFilterRef.current, enemyMovementSmoothedRef.current);
+    }
+  });
+  return <Container />;
+};
 
 const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentProps) => {
   const { width, height, scale } = useDimensions();
@@ -673,6 +755,36 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   const mobileControlsHeight = isMobile() ? 100 : 0;
   const stageHeight = height - mobileControlsHeight;
 
+  // Color smear: per-entity so player and enemies smear in their own movement direction.
+  const colorSmearFilterRef = useRef<PIXI.Filter | null>(null);
+  const prevPlayerPosRef = useRef<IPosition>({ x: 0, y: 0 });
+  const movementSmoothedRef = useRef(0);
+  const formationSmearRef = useRef<FormationSmearRef>({ direction: 0, rawMovement: 0 });
+  const enemyColorSmearFilterRef = useRef<PIXI.Filter | null>(null);
+  const enemyMovementSmoothedRef = useRef(0);
+
+  const colorSmearOptions: ColorSmearFilterOptions = useMemo(
+    () => ({
+      strength: 12,
+      decaySpeed: COLOR_SMEAR_DECAY_SPEED,
+      rampSpeed: COLOR_SMEAR_RAMP_SPEED,
+      movementScale: COLOR_SMEAR_MOVEMENT_SCALE,
+    }),
+    []
+  );
+
+  const colorSmearFilter = useMemo(() => {
+    const filter = createColorSmearFilter(width, stageHeight, colorSmearOptions);
+    colorSmearFilterRef.current = filter;
+    return filter;
+  }, [width, stageHeight, colorSmearOptions]);
+
+  const enemyColorSmearFilter = useMemo(() => {
+    const filter = createColorSmearFilter(width, stageHeight, colorSmearOptions);
+    enemyColorSmearFilterRef.current = filter;
+    return filter;
+  }, [width, stageHeight, colorSmearOptions]);
+
   return (
     <div
       data-vertical-offset={verticalOffset}
@@ -705,71 +817,91 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
         ref={stageWrapperRef}
         style={{ width, height: stageHeight, overflow: 'hidden' }}
       >
-      <Stage width={width} height={stageHeight} onPointerDown={handleStageClick}>
-        {/* Full-screen plane mesh background */}
-        <PlaneBackground width={width} height={height} />
-        <Container scale={scale} x={horizontalOffset} y={verticalOffset}>
-          <ScreenShakeUpdater wrapperRef={stageWrapperRef} shakeParamsRef={shakeParamsRef} />
-          <CollisionDebug isVisible={showCollisionDebug} />
-          <BulletManager
-            ref={bulletManagerRef}
-            enemyPositionsRef={enemyPositionsRef}
-            onEnemyHit={handleEnemyHit}
-            enemyBulletPositionsRef={enemyBulletPositionsRef}
-            onPlayerBulletHitEnemyBullet={handlePlayerBulletHitEnemyBullet}
-            powerupPositionsRef={powerupPositionsRef}
-            onPlayerBulletHitPowerup={handlePlayerBulletHitPowerup}
-          />
-          {/* <HeroMouse onClickMove={onClickMove} /> */}
-          <PlayerAnimated
-            bulletManagerRef={bulletManagerRef}
-            gunType="spreader"
-            getControlsDirection={getControlsDirection}
-            consumeShootPress={consumeShootPress}
-            isShootHeld={isShootHeld}
-            positionRef={playerPositionRef}
-            playerRef={playerRef}
-            notifyShotFired={notifyShotFired}
-            isExiting={isPlayerExiting}
-            onExitComplete={handlePlayerExitComplete}
-          />
-          {/* Enemies in Space Invaders formation (all move together) */}
-          <EnemyFormation
-            ref={enemyFormationRef}
-            enemies={enemies}
-            enemyTypeId={gameState.getSelectedEnemyTypeId() || DEFAULT_ENEMY_TYPE_ID}
-            onEnemyRemove={removeEnemy}
-            playerPositionRef={playerPositionRef}
-            onPlayerHit={handlePlayerHit}
-            enemyBulletPositionsRef={enemyBulletPositionsRef}
-          />
-          <PowerupUpdater
-            powerups={powerups}
-            setPowerups={setPowerups}
-            playerPositionRef={playerPositionRef}
-            powerupPositionsRef={powerupPositionsRef}
-            powerupZipFactorRef={powerupZipFactorRef}
-          />
-          {powerups.map((p) => (
-            <Powerup
-              key={p.id}
-              id={p.id}
-              x={p.x}
-              y={p.y}
-              frameIndex={p.frameIndex + POWERUP_SPRITE_FRAME_OFFSET}
-              scale={p.scale ?? POWERUP_SCALE_MAX}
-              frameCount={5}
+        <Stage
+          width={width}
+          height={stageHeight}
+          onPointerDown={handleStageClick}
+        >
+          {/* Full-screen plane mesh background */}
+          <PlaneBackground width={width} height={height} />
+          <Container
+            scale={scale}
+            x={horizontalOffset}
+            y={verticalOffset}
+          >
+            <ScreenShakeUpdater wrapperRef={stageWrapperRef} shakeParamsRef={shakeParamsRef} />
+            <CollisionDebug isVisible={showCollisionDebug} />
+            <BulletManager
+              ref={bulletManagerRef}
+              enemyPositionsRef={enemyPositionsRef}
+              onEnemyHit={handleEnemyHit}
+              enemyBulletPositionsRef={enemyBulletPositionsRef}
+              onPlayerBulletHitEnemyBullet={handlePlayerBulletHitEnemyBullet}
+              powerupPositionsRef={powerupPositionsRef}
+              onPlayerBulletHitPowerup={handlePlayerBulletHitPowerup}
             />
-          ))}
-          {/* Entity collision boundaries visualization */}
-          <EntityCollisionDebug
-            isVisible={showCollisionDebug}
-            playerPositionRef={playerPositionRef}
-            enemies={enemies}
-            enemyRadius={enemyBulletHitRadius}
-          />
-        </Container>
-      </Stage>
+            <Container filters={colorSmearFilter ? [colorSmearFilter] : undefined}>
+              <PlayerAnimated
+                bulletManagerRef={bulletManagerRef}
+                gunType="spreader"
+                getControlsDirection={getControlsDirection}
+                consumeShootPress={consumeShootPress}
+                isShootHeld={isShootHeld}
+                positionRef={playerPositionRef}
+                playerRef={playerRef}
+                notifyShotFired={notifyShotFired}
+                isExiting={isPlayerExiting}
+                onExitComplete={handlePlayerExitComplete}
+              />
+            </Container>
+            <Container filters={enemyColorSmearFilter ? [enemyColorSmearFilter] : undefined}>
+              <EnemyFormation
+                ref={enemyFormationRef}
+                enemies={enemies}
+                enemyTypeId={gameState.getSelectedEnemyTypeId() || DEFAULT_ENEMY_TYPE_ID}
+                onEnemyRemove={removeEnemy}
+                playerPositionRef={playerPositionRef}
+                onPlayerHit={handlePlayerHit}
+                enemyBulletPositionsRef={enemyBulletPositionsRef}
+                formationSmearRef={formationSmearRef}
+              />
+            </Container>
+            <PowerupUpdater
+              powerups={powerups}
+              setPowerups={setPowerups}
+              playerPositionRef={playerPositionRef}
+              powerupPositionsRef={powerupPositionsRef}
+              powerupZipFactorRef={powerupZipFactorRef}
+            />
+            {powerups.map((p) => (
+              <Powerup
+                key={p.id}
+                id={p.id}
+                x={p.x}
+                y={p.y}
+                frameIndex={p.frameIndex + POWERUP_SPRITE_FRAME_OFFSET}
+                scale={p.scale ?? POWERUP_SCALE_MAX}
+                frameCount={5}
+              />
+            ))}
+            {/* Entity collision boundaries visualization */}
+            <EntityCollisionDebug
+              isVisible={showCollisionDebug}
+              playerPositionRef={playerPositionRef}
+              enemies={enemies}
+              enemyRadius={enemyBulletHitRadius}
+            />
+            <ColorSmearUpdater
+              filterRef={colorSmearFilterRef}
+              playerPositionRef={playerPositionRef}
+              prevPlayerPosRef={prevPlayerPosRef}
+              movementSmoothedRef={movementSmoothedRef}
+              enemyFilterRef={enemyColorSmearFilterRef}
+              formationSmearRef={formationSmearRef}
+              enemyMovementSmoothedRef={enemyMovementSmoothedRef}
+            />
+          </Container>
+        </Stage>
       </div>
       {/* Mobile-only movement and shoot controls in a separate bottom bar. */}
       <div
@@ -784,6 +916,19 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           bigRedButtonEnabled={bigRedButtonEnabled}
         />
       </div>
+      {/* Full-screen CRT overlay over gameplay AND mobile controls (non-interactive layer). */}
+      <Stage
+        width={width}
+        height={height}
+        options={{ backgroundAlpha: 0 }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <CRTOverlay width={width} height={height} />
+      </Stage>
     </div>
   );
 };

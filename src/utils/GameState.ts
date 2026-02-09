@@ -533,7 +533,7 @@ export class GameState {
 
     if (bulletType === 'heavyMachineGun') {
       // Shot-limited powerup: 50 shots, no time limit.
-      this.powerupShotsRemaining = 10;
+      this.powerupShotsRemaining = 50;
       this.powerupOverrideExpiry = 0;
     } else {
       // Time-limited powerup (e.g. spreader)

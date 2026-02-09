@@ -6,6 +6,7 @@ import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { gameState } from "../utils/GameState";
+import { useVisualSettings } from "../contexts/VisualSettingsContext";
 
 interface GameOverScreenProps {
   onPlayAgain: () => void;
@@ -14,6 +15,7 @@ interface GameOverScreenProps {
 
 const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
   const { width, height } = useDimensions();
+  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
   const [isHoveringPlayAgain, setIsHoveringPlayAgain] = useState(false);
   const [isHoveringMainMenu, setIsHoveringMainMenu] = useState(false);
   const [flashOpacity, setFlashOpacity] = useState(1);
@@ -213,7 +215,14 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
         />
       </Container>
 
-      <CRTOverlay width={width} height={height} />
+      {retroScanlinesEnabled && (
+        <CRTOverlay
+          width={width}
+          height={height}
+          uScan={crtSettings.uScan}
+          uWarp={crtSettings.uWarp}
+        />
+      )}
     </Stage>
   );
 };

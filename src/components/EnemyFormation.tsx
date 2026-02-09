@@ -3,12 +3,18 @@ import { useState, useCallback, useRef, useMemo, forwardRef, useImperativeHandle
 import * as PIXI from "pixi.js";
 import { sound } from "@pixi/sound";
 import { ENEMY_SCALE, PLAYER_COLLISION_RADIUS, PLAYER_START_Y } from "../consts/tuning-config";
-import { TILE_SIZE, COLS } from "../consts/game-world";
+import { TILE_SIZE, COLS, isDesktop } from "../consts/game-world";
 import { IPosition } from "../types/common";
 import { gameState } from "../utils/GameState";
 import { getEnemyTypeConfig, DEFAULT_ENEMY_TYPE_ID } from "../consts/enemy-types";
+import { POWERUP_GUN_BULLET_TYPES } from "../consts/bullet-config";
 
 const ENEMY_BULLET_SCALE = 0.05;
+// Desktop-only tuning: slightly slower enemy fire cadence on desktop so pace matches mobile.
+const DESKTOP_ENEMY_SHOOT_DELAY_MULTIPLIER = 1.2;
+// Duration (ms) for powerup weapon when granted directly by a green bullet hitting the player.
+// Keep this in sync with POWERUP_DURATION_MS in Experience.tsx.
+const POWERUP_DURATION_MS_DIRECT = 2000;
 
 // Enemy animation configuration
 // Frame sequence: 0 -> 1 -> 2 -> 1 -> 0 (5-step cycle)
@@ -43,14 +49,21 @@ interface EnemyFormationProps {
   onEnemyRemove: (enemyId: string) => void;
   playerPositionRef?: React.RefObject<{ x: number; y: number }>;
   onPlayerHit?: () => void;
-  /** Optional ref to sync current enemy bullet positions (id -> {x,y}) for player bullet collision. */
-  enemyBulletPositionsRef?: React.RefObject<Map<string, { x: number; y: number }>>;
+  /** Optional ref to sync current enemy bullet positions (id -> {x,y,isPowerupBullet}) for player bullet collision. */
+  enemyBulletPositionsRef?: React.RefObject<Map<string, { x: number; y: number; isPowerupBullet?: boolean }>>;
 }
+
+/** Chance that a spawned enemy bullet is a green powerup bullet (shoot it to get a powerup). */
+const POWERUP_BULLET_CHANCE = 0.06;
+/** Green bullets move at this fraction of normal speed so they're easier to shoot. */
+const POWERUP_BULLET_SPEED_FACTOR = 0.45;
 
 interface EnemyBulletData {
   id: string;
   x: number;
   y: number;
+  /** When true, bullet is green; only shooting this bullet spawns a powerup. */
+  isPowerupBullet: boolean;
 }
 
 const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(function EnemyFormation({
@@ -174,14 +187,19 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
     return Math.max(delay, MIN_MOVE_DELAY);
   }, [enemies.length]);
 
-  // Calculate current shoot delay (faster as enemies die; scaled by difficulty)
+  // Calculate current shoot delay (faster as enemies die; scaled by difficulty).
+  // Desktop-only tuning: apply a small multiplier so enemy fire cadence is a bit slower than on mobile.
   const getShootDelay = useCallback(() => {
     if (enemies.length === 0) return BASE_SHOOT_DELAY;
     
     const speedMultiplier = enemies.length / initialEnemyCount.current;
-    const delay = BASE_SHOOT_DELAY * speedMultiplier * getDifficultyShootDelayMultiplier();
+    const deviceShootDelayFactor = isDesktop() ? DESKTOP_ENEMY_SHOOT_DELAY_MULTIPLIER : 1;
+    const delay = BASE_SHOOT_DELAY * speedMultiplier * getDifficultyShootDelayMultiplier() * deviceShootDelayFactor;
     
-    return Math.max(delay, MIN_SHOOT_DELAY * getDifficultyShootDelayMultiplier());
+    return Math.max(
+      delay,
+      MIN_SHOOT_DELAY * getDifficultyShootDelayMultiplier() * deviceShootDelayFactor
+    );
   }, [enemies.length, getDifficultyShootDelayMultiplier]);
 
   // Get bullet speed based on enemy count and difficulty
@@ -239,6 +257,7 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
       id: `enemy-bullet-${Date.now()}-${Math.random()}`,
       x: shooter.positionRef.current.x,
       y: shooter.positionRef.current.y + TILE_SIZE / 2, // Start below enemy
+      isPowerupBullet: Math.random() < POWERUP_BULLET_CHANCE,
     };
 
     bulletPositionsRef.current.set(newBullet.id, { x: newBullet.x, y: newBullet.y });
@@ -415,7 +434,8 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
 
     enemyBullets.forEach((bullet) => {
       const pos = bulletPositionsRef.current.get(bullet.id) ?? { x: bullet.x, y: bullet.y };
-      pos.y += bulletSpeed * delta;
+      const speed = bullet.isPowerupBullet ? bulletSpeed * POWERUP_BULLET_SPEED_FACTOR : bulletSpeed;
+      pos.y += speed * delta;
       bulletPositionsRef.current.set(bullet.id, pos);
 
       if (pos.y > TILE_SIZE * 35) {
@@ -428,18 +448,30 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
         const distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < bulletRadius + PLAYER_COLLISION_RADIUS) {
           idsToRemove.add(bullet.id);
-          didHitPlayer = true;
+          if (bullet.isPowerupBullet && !gameState.isPowerupActive()) {
+            // Green enemy bullet hit the player: grant a random powerup instead of dealing damage.
+            const types = POWERUP_GUN_BULLET_TYPES;
+            if (types.length > 0) {
+              const randomIndex = Math.floor(Math.random() * types.length);
+              const bulletType = types[randomIndex];
+              if (bulletType) {
+                gameState.setPowerupBulletType(bulletType, POWERUP_DURATION_MS_DIRECT);
+              }
+            }
+          } else {
+            didHitPlayer = true;
+          }
         }
       }
     });
 
-    // Sync enemy bullet positions for player bullet collision (powerup spawn)
+    // Sync enemy bullet positions for player bullet collision (powerup only when green bullet hit)
     if (enemyBulletPositionsRef?.current) {
       enemyBulletPositionsRef.current.clear();
       enemyBullets.forEach((bullet) => {
         if (idsToRemove.has(bullet.id)) return;
         const pos = bulletPositionsRef.current.get(bullet.id) ?? { x: bullet.x, y: bullet.y };
-        enemyBulletPositionsRef.current!.set(bullet.id, { ...pos });
+        enemyBulletPositionsRef.current!.set(bullet.id, { ...pos, isPowerupBullet: bullet.isPowerupBullet });
       });
     }
 
@@ -503,10 +535,10 @@ const EnemyFormation = forwardRef<EnemyFormationRef, EnemyFormationProps>(functi
             sprite = new PIXI.Sprite(bulletTexture);
             sprite.anchor.set(0.5);
             sprite.scale.set(ENEMY_BULLET_SCALE);
-            sprite.tint = bulletTint;
             sprite.rotation = Math.PI;
             bulletSpriteMapRef.current.set(bullet.id, sprite);
           }
+          sprite.tint = bullet.isPowerupBullet ? 0x00ff00 : bulletTint;
           sprite.x = pos.x;
           sprite.y = pos.y;
           if (!sprite.parent) container.addChild(sprite);

@@ -20,8 +20,13 @@ export const OFFSET_Y = TILE_SIZE / 2;
 
 // Collision constants
 export const ENEMY_COLLISION_MULTIPLIER = 10.0; // Legacy / other uses
-/** Radius (px) for player bullet vs enemy hit. Used in BulletManager and debug UI (press C). */
-export const ENEMY_BULLET_HIT_RADIUS = 32;
+/**
+ * Radius (px) for player bullet vs enemy hit. Used in BulletManager and debug UI (press C).
+ * Mobile keeps the original, slightly more generous radius; desktop uses a tighter radius.
+ */
+export const ENEMY_BULLET_HIT_RADIUS = typeof window === "undefined"
+  ? 22
+  : (window.innerWidth <= 768 || window.innerHeight > window.innerWidth ? 22 : 12);
 
 /** Player bullet vs enemy bullet: count as hit when centers are within this distance (px). */
 export const BULLET_VS_BULLET_HIT_RADIUS = 28;

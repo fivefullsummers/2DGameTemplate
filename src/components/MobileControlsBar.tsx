@@ -18,7 +18,8 @@ const MobileControlsBar = ({
   const {
     setJoystickDirection,
     setJoystickRun,
-    triggerMobileShoot,
+    startMobileShoot,
+    stopMobileShoot,
     shotCooldownInfo,
   } = useControlsContext();
   const [effectiveBulletType, setEffectiveBulletType] = useState(gameState.getState().effectiveBulletType);
@@ -56,7 +57,8 @@ const MobileControlsBar = ({
         <BigRedButton onPress={onBigRedButtonPress} />
       )}
       <MobileShootButton
-        onShoot={triggerMobileShoot}
+        onShootStart={startMobileShoot}
+        onShootEnd={stopMobileShoot}
         shotCooldownInfo={shotCooldownInfo}
         effectiveBulletType={effectiveBulletType}
       />

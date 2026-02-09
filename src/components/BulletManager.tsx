@@ -16,6 +16,7 @@ import {
   BULLET_VS_BULLET_HIT_RADIUS,
   BULLET_ATTRACTION_RADIUS,
   BULLET_ATTRACTION_STRENGTH,
+  isDesktop,
 } from "../consts/game-world";
 
 interface BulletData {
@@ -40,9 +41,9 @@ export interface BulletManagerRef {
 interface BulletManagerProps {
   enemyPositionsRef?: RefObject<Map<string, IPosition>>;
   onEnemyHit?: (enemyId: string, bulletType: string) => void;
-  /** Enemy bullet positions (id -> {x,y}) for collision; when player bullet hits one, callback is called. */
-  enemyBulletPositionsRef?: RefObject<Map<string, { x: number; y: number }>>;
-  onPlayerBulletHitEnemyBullet?: (x: number, y: number, enemyBulletId: string) => void;
+  /** Enemy bullet positions (id -> {x,y,isPowerupBullet}) for collision; both bullets destroyed on hit; powerup only if green. */
+  enemyBulletPositionsRef?: RefObject<Map<string, { x: number; y: number; isPowerupBullet?: boolean }>>;
+  onPlayerBulletHitEnemyBullet?: (x: number, y: number, enemyBulletId: string, isPowerupBullet: boolean) => void;
   /** Powerup positions (id -> {x,y}) for collision; when player bullet hits one, callback is called. */
   powerupPositionsRef?: RefObject<Map<string, { x: number; y: number }>>;
   onPlayerBulletHitPowerup?: (powerupId: string) => void;
@@ -103,7 +104,8 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
         let effectiveSpeed = cruiseSpeed;
         if (mult > 1 && decayMs > 0) {
           const t = Math.exp(-age / decayMs);
-          effectiveSpeed = cruiseSpeed * (1 + (mult - 1) * t);
+          const desktopInitialBoostScale = isDesktop() ? 0.5 : 1; // Soften explosive start on desktop only
+          effectiveSpeed = cruiseSpeed * (1 + (mult - 1) * t * desktopInitialBoostScale);
         }
 
         let newX = bullet.x;
@@ -123,12 +125,13 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
             break;
         }
 
-        // Attraction: when player bullet is close to an enemy bullet, nudge it toward the enemy bullet
+        // Attraction: only toward green powerup bullets. Regular red bullets no longer attract player shots.
         const enemyBulletPositionsForAttraction = enemyBulletPositionsRef?.current;
         if (enemyBulletPositionsForAttraction && onPlayerBulletHitEnemyBullet) {
           let nearestDist = Infinity;
           let nearestPos: { x: number; y: number } | null = null;
           for (const enemyPos of enemyBulletPositionsForAttraction.values()) {
+            if (!enemyPos.isPowerupBullet) continue;
             const dx = enemyPos.x - newX;
             const dy = enemyPos.y - newY;
             const d = Math.sqrt(dx * dx + dy * dy);
@@ -162,7 +165,8 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
           bulletCol < COLLISION_COLS - 2;
         if (isInPlayableArea && COLLISION_MAP[bulletRow][bulletCol] === 1) continue;
 
-        // Player bullet vs enemy bullet: large hit radius + attraction = easier powerup spawn
+        // Player bullet vs enemy bullet. OFF for regular bullets (bullets pass through); ON for green powerup bullets only.
+        // To re-enable collision for all: remove the "enemyPos.isPowerupBullet" check below.
         const enemyBulletPositions = enemyBulletPositionsRef?.current;
         let hitEnemyBullet = false;
         if (enemyBulletPositions && onPlayerBulletHitEnemyBullet) {
@@ -170,8 +174,8 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
             const dx = newX - enemyPos.x;
             const dy = newY - enemyPos.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < BULLET_VS_BULLET_HIT_RADIUS) {
-              onPlayerBulletHitEnemyBullet(newX, newY, enemyBulletId);
+            if (dist < BULLET_VS_BULLET_HIT_RADIUS && enemyPos.isPowerupBullet) {
+              onPlayerBulletHitEnemyBullet(newX, newY, enemyBulletId, true);
               hitEnemyBullet = true;
               break;
             }
@@ -205,7 +209,10 @@ const BulletManager = forwardRef<BulletManagerRef, BulletManagerProps>(
             const dx = newX - enemyPos.x;
             const dy = newY - enemyPos.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+
             if (distance < bulletRadius + enemyBulletHitRadius) {
+              // Delegate special behavior (spreader, lineGun, etc.) to onEnemyHit,
+              // just like other bullet types.
               onEnemyHit(enemyId, bullet.bulletType);
               hitEnemy = true;
               break;

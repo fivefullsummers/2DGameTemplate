@@ -34,7 +34,7 @@ export const PLAYER_CONFIGS: Record<string, PlayerConfig> = {
   incredible: {
     id: "incredible",
     name: "The Incredible UP",
-    weaponOfChoice: "fast",
+    weaponOfChoice: "lineGun",
     heroAsset: "hero-cool",
     explosionAsset: "hero-explosion",
     deathSoundId: "explosion-sound",
@@ -43,7 +43,7 @@ export const PLAYER_CONFIGS: Record<string, PlayerConfig> = {
   tbc1: {
     id: "tbc1",
     name: "Name TBC",
-    weaponOfChoice: "heavy",
+    weaponOfChoice: "spreader",
     heroAsset: "hero-cool",
     explosionAsset: "hero-explosion",
     deathSoundId: "explosion-sound",
@@ -52,7 +52,7 @@ export const PLAYER_CONFIGS: Record<string, PlayerConfig> = {
   tbc2: {
     id: "tbc2",
     name: "Name TBC",
-    weaponOfChoice: "spaceInvadersBullet",
+    weaponOfChoice: "heavyMachineGun",
     heroAsset: "hero-cool",
     explosionAsset: "hero-explosion",
     deathSoundId: "explosion-sound",

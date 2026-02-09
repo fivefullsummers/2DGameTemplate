@@ -12,7 +12,7 @@ import useDimensions from "../hooks/useDimensions";
 
 // import HeroMouse from "./HeroMouse";
 import PlayerAnimated, { PlayerRef } from "./PlayerAnimated";
-import EnemyFormation, { EnemyFormationRef, type FormationSmearRef } from "./EnemyFormation";
+import EnemyFormation, { EnemyFormationRef } from "./EnemyFormation";
 import CollisionDebug from "./CollisionDebug";
 import EntityCollisionDebug from "./EntityCollisionDebug";
 import CollisionInfo from "./CollisionInfo";
@@ -207,21 +207,14 @@ const ColorSmearUpdater = ({
   playerPositionRef,
   prevPlayerPosRef,
   movementSmoothedRef,
-  enemyFilterRef,
-  formationSmearRef,
-  enemyMovementSmoothedRef,
 }: {
   filterRef: React.RefObject<PIXI.Filter | null>;
   playerPositionRef: React.RefObject<IPosition>;
   prevPlayerPosRef: React.MutableRefObject<IPosition>;
   movementSmoothedRef: React.MutableRefObject<number>;
-  enemyFilterRef?: React.RefObject<PIXI.Filter | null>;
-  formationSmearRef?: React.MutableRefObject<FormationSmearRef>;
-  enemyMovementSmoothedRef?: React.MutableRefObject<number>;
 }) => {
   const lastDirectionXRef = useRef(1);
   const lastDirectionYRef = useRef(0);
-  const lastEnemyDirectionRef = useRef(1);
   useTick((delta) => {
     const filter = filterRef.current;
     if (filter) {
@@ -250,21 +243,6 @@ const ColorSmearUpdater = ({
       const blend = rawMovement > smoothed ? COLOR_SMEAR_RAMP_SPEED : COLOR_SMEAR_DECAY_SPEED;
       movementSmoothedRef.current = smoothed + (rawMovement - smoothed) * blend;
       updateColorSmearMovement(filter, movementSmoothedRef.current);
-    }
-
-    if (enemyFilterRef?.current && formationSmearRef && enemyMovementSmoothedRef) {
-      const formation = formationSmearRef.current;
-      if (formation.rawMovement > 0) {
-        lastEnemyDirectionRef.current = formation.direction;
-      }
-      const rawEnemy = formation.rawMovement;
-      formation.rawMovement = 0;
-      updateColorSmearTime(enemyFilterRef.current, delta);
-      updateColorSmearDirection(enemyFilterRef.current, lastEnemyDirectionRef.current); // horizontal only
-      const smoothed = enemyMovementSmoothedRef.current;
-      const blend = rawEnemy > smoothed ? COLOR_SMEAR_RAMP_SPEED : COLOR_SMEAR_DECAY_SPEED;
-      enemyMovementSmoothedRef.current = smoothed + (rawEnemy - smoothed) * blend;
-      updateColorSmearMovement(enemyFilterRef.current, enemyMovementSmoothedRef.current);
     }
   });
   return <Container />;
@@ -766,10 +744,6 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   const colorSmearFilterRef = useRef<PIXI.Filter | null>(null);
   const prevPlayerPosRef = useRef<IPosition>({ x: 0, y: 0 });
   const movementSmoothedRef = useRef(0);
-  const formationSmearRef = useRef<FormationSmearRef>({ direction: 0, rawMovement: 0 });
-  const enemyColorSmearFilterRef = useRef<PIXI.Filter | null>(null);
-  const enemyMovementSmoothedRef = useRef(0);
-
   const colorSmearOptions: ColorSmearFilterOptions = useMemo(
     () => ({
       strength: motionBlurSettings.strength,
@@ -788,12 +762,6 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   const colorSmearFilter = useMemo(() => {
     const filter = createColorSmearFilter(width, stageHeight, colorSmearOptions);
     colorSmearFilterRef.current = filter;
-    return filter;
-  }, [width, stageHeight, colorSmearOptions]);
-
-  const enemyColorSmearFilter = useMemo(() => {
-    const filter = createColorSmearFilter(width, stageHeight, colorSmearOptions);
-    enemyColorSmearFilterRef.current = filter;
     return filter;
   }, [width, stageHeight, colorSmearOptions]);
 
@@ -870,24 +838,15 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
                 onExitComplete={handlePlayerExitComplete}
               />
             </Container>
-            <Container
-              filters={
-                motionBlurEnabled && enemyColorSmearFilter
-                  ? [enemyColorSmearFilter]
-                  : undefined
-              }
-            >
-              <EnemyFormation
-                ref={enemyFormationRef}
-                enemies={enemies}
-                enemyTypeId={gameState.getSelectedEnemyTypeId() || DEFAULT_ENEMY_TYPE_ID}
-                onEnemyRemove={removeEnemy}
-                playerPositionRef={playerPositionRef}
-                onPlayerHit={handlePlayerHit}
-                enemyBulletPositionsRef={enemyBulletPositionsRef}
-                formationSmearRef={formationSmearRef}
-              />
-            </Container>
+            <EnemyFormation
+              ref={enemyFormationRef}
+              enemies={enemies}
+              enemyTypeId={gameState.getSelectedEnemyTypeId() || DEFAULT_ENEMY_TYPE_ID}
+              onEnemyRemove={removeEnemy}
+              playerPositionRef={playerPositionRef}
+              onPlayerHit={handlePlayerHit}
+              enemyBulletPositionsRef={enemyBulletPositionsRef}
+            />
             <PowerupUpdater
               powerups={powerups}
               setPowerups={setPowerups}
@@ -918,9 +877,6 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
               playerPositionRef={playerPositionRef}
               prevPlayerPosRef={prevPlayerPosRef}
               movementSmoothedRef={movementSmoothedRef}
-              enemyFilterRef={enemyColorSmearFilterRef}
-              formationSmearRef={formationSmearRef}
-              enemyMovementSmoothedRef={enemyMovementSmoothedRef}
             />
           </Container>
         </Stage>

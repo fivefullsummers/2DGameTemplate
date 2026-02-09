@@ -438,7 +438,9 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
 
   // Trigger explosion for one enemy (single bullet hit)
   const triggerEnemyExplosion = useCallback((enemyId: string) => {
-    const explosionSfx = sound.find("alien-death");
+    const alienSfx = sound.find("alien-death");
+    if (alienSfx) alienSfx.play({ volume: 0.25 });
+    const explosionSfx = sound.find("sfx-exp-short-hard2");
     if (explosionSfx) explosionSfx.play({ volume: 0.25 });
     triggerScreenShake();
 
@@ -454,7 +456,9 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   // Batch: mark multiple enemies exploding in one state update (spreader waves)
   const triggerEnemyExplosionBatch = useCallback((enemyIds: string[]) => {
     if (enemyIds.length === 0) return;
-    const explosionSfx = sound.find("alien-death");
+    const alienSfx = sound.find("alien-death");
+    if (alienSfx) alienSfx.play({ volume: 0.25 });
+    const explosionSfx = sound.find("sfx-exp-short-hard2");
     if (explosionSfx) explosionSfx.play({ volume: 0.25 });
     triggerScreenShake(SHAKE_SPREADER_AMPLITUDE_PX);
 

@@ -139,7 +139,7 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
     const config = BULLET_TYPES[bulletType];
     const soundId = config?.soundId ?? "pound-sound";
     const s = sound.find(soundId);
-    if (s) s.play({ volume: soundId === "pound-sound" ? 0.05 : 0.5 });
+    if (s) s.play({ volume: soundId === "pound-sound" ? 0.03 : 0.15 });
   };
 
   const handleWeaponSelect = (bulletType: string) => {

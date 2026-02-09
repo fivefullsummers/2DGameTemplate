@@ -16,6 +16,11 @@ import sfxDeathscreamAlien from "../assets/sounds/sfx_deathscream_alien3.wav";
 import sfxDeathscreamHuman from "../assets/sounds/sfx_deathscream_human1.wav";
 import sfxCoin from "../assets/sounds/sfx_coin_double5.wav";
 import sfxButton from "../assets/sounds/sfx_sounds_button11.wav";
+import sfxWeaponSingleshot from "../assets/sounds/sfx_weapon_singleshot13.wav";
+import sfxWeaponSingleshot6 from "../assets/sounds/sfx_weapon_singleshot6.wav";
+import sfxWeaponShotgun2 from "../assets/sounds/sfx_weapon_shotgun2.wav";
+import sfxWpnLaser6 from "../assets/sounds/sfx_wpn_laser6.wav";
+import sfxExpShortHard2 from "../assets/sounds/sfx_exp_short_hard2.wav";
 
 /**
  * Asset manifest - defines all assets that need to be loaded
@@ -97,6 +102,31 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     src: sfxButton,
     description: "Menu button click",
   },
+  {
+    alias: "sfx-weapon-singleshot13",
+    src: sfxWeaponSingleshot,
+    description: "Basic weapon single shot",
+  },
+  {
+    alias: "sfx-weapon-singleshot6",
+    src: sfxWeaponSingleshot6,
+    description: "Heavy machine gun single shot",
+  },
+  {
+    alias: "sfx-weapon-shotgun2",
+    src: sfxWeaponShotgun2,
+    description: "Spreader shotgun shot",
+  },
+  {
+    alias: "sfx-wpn-laser6",
+    src: sfxWpnLaser6,
+    description: "Line gun laser shot",
+  },
+  {
+    alias: "sfx-exp-short-hard2",
+    src: sfxExpShortHard2,
+    description: "Enemy explosion",
+  },
 ];
 
 /** Resolved URL for powerup guns spritesheet (guns.png); use for DOM img/background, same source as Powerup. */
@@ -155,6 +185,11 @@ export class AssetLoader {
           { alias: "human-death", src: sfxDeathscreamHuman },
           { alias: "coin", src: sfxCoin },
           { alias: "button-click", src: sfxButton },
+          { alias: "sfx-weapon-singleshot13", src: sfxWeaponSingleshot },
+          { alias: "sfx-weapon-singleshot6", src: sfxWeaponSingleshot6 },
+          { alias: "sfx-weapon-shotgun2", src: sfxWeaponShotgun2 },
+          { alias: "sfx-wpn-laser6", src: sfxWpnLaser6 },
+          { alias: "sfx-exp-short-hard2", src: sfxExpShortHard2 },
         ];
         
         // Register each sound with the sound system using the source path

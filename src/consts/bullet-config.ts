@@ -11,6 +11,10 @@ const BULLET_SCALE_SMALL = 0.05;
 
 // Sound alias for bullet fire (loaded via AssetLoader)
 const BULLET_SOUND_PLACEHOLDER = "pound-sound";
+const BULLET_SOUND_BASIC = "sfx-weapon-singleshot13";
+const BULLET_SOUND_HEAVY_MACHINE_GUN = "sfx-weapon-singleshot6";
+const BULLET_SOUND_SPREADER = "sfx-weapon-shotgun2";
+const BULLET_SOUND_LINE_GUN = "sfx-wpn-laser6";
 
 // Speed curve: explosive exit, then ease to cruise (bigger curve = more punch)
 const BULLET_INITIAL_SPEED_MULTIPLIER = 4;
@@ -54,7 +58,7 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     scale: BULLET_SCALE_SMALL,
     lifetime: 0,
     maxOnScreen: 1,
-    soundId: BULLET_SOUND_PLACEHOLDER,
+    soundId: BULLET_SOUND_BASIC,
     initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
     speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
@@ -118,7 +122,7 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     scale: BULLET_SCALE_SMALL,
     lifetime: 0,
     maxOnScreen: 1,
-    soundId: BULLET_SOUND_PLACEHOLDER,
+    soundId: BULLET_SOUND_SPREADER,
     initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
     speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
@@ -135,7 +139,7 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     lifetime: 0,
     maxOnScreen: 500,
     fireRateMs: 40,
-    soundId: BULLET_SOUND_PLACEHOLDER,
+    soundId: BULLET_SOUND_HEAVY_MACHINE_GUN,
     initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
     speedDecayMs: BULLET_SPEED_DECAY_MS,
   },
@@ -151,7 +155,7 @@ export const BULLET_TYPES: Record<string, BulletConfig> = {
     scale: BULLET_SCALE_SMALL,
     lifetime: 0,
     maxOnScreen: 1,
-    soundId: BULLET_SOUND_PLACEHOLDER,
+    soundId: BULLET_SOUND_LINE_GUN,
     initialSpeedMultiplier: BULLET_INITIAL_SPEED_MULTIPLIER,
     speedDecayMs: BULLET_SPEED_DECAY_MS,
   },

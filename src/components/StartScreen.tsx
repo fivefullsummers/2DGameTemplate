@@ -19,10 +19,10 @@ const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
   const [isOptionsHovering, setIsOptionsHovering] = useState(false);
   const [titleScale, setTitleScale] = useState(1 / 2);
   // Live tweaks for the dither shader
-  const [ditherR, setDitherR] = useState(1.2);
-  const [ditherLevels, setDitherLevels] = useState(2);
-  const [ditherScale, setDitherScale] = useState(2.5);
-  const [ditherBandHeight, setDitherBandHeight] = useState(0.25);
+  const [ditherR, setDitherR] = useState(5.8);
+  const [ditherLevels, setDitherLevels] = useState(12);
+  const [ditherScale, setDitherScale] = useState(14.5);
+  const [ditherBandHeight, setDitherBandHeight] = useState(0.55);
 
   // Animate title with a pulsing effect
   useMemo(() => {

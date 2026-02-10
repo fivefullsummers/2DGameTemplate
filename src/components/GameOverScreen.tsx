@@ -1,7 +1,7 @@
 import { Container, Stage, Text } from "@pixi/react";
 import { useState, useMemo, useEffect } from "react";
 import useDimensions from "../hooks/useDimensions";
-import ShaderBackground from "./ShaderBackground";
+import StartScreenBackground from "./StartScreenBackground";
 import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
@@ -108,8 +108,8 @@ const GameOverScreen = ({ onPlayAgain, onMainMenu }: GameOverScreenProps) => {
 
   return (
     <Stage width={width} height={height}>
-      {/* Shader Background */}
-      <ShaderBackground width={width} height={height} />
+      {/* Dithered Shader Background */}
+      <StartScreenBackground width={width} height={height} />
 
       {/* GAME OVER Title (flashing) */}
       <Container x={width / 2} y={height / 5}>

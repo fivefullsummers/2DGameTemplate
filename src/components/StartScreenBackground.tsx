@@ -34,10 +34,10 @@ interface StartScreenBackgroundProps {
 const StartScreenBackground = ({
   width,
   height,
-  r = 1.2,
-  levels = 2,
-  ditherScale = 2.5,
-  bandHeight = 0.25,
+  r = 5.8,
+  levels = 12,
+  ditherScale = 14.5,
+  bandHeight = 0.55,
 }: StartScreenBackgroundProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);

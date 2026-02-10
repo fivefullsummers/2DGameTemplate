@@ -248,6 +248,46 @@ const ColorSmearUpdater = ({
   return <Container />;
 };
 
+const LEVEL_TIMER_MIN_SECONDS = 0;
+
+/** Runs inside Stage; decrements the level countdown timer and triggers Game Over when it expires. */
+const LevelTimerUpdater = ({ timerEnabled }: { timerEnabled: boolean }) => {
+  const lastTimestampRef = useRef<number | null>(null);
+
+  useTick(() => {
+    // Only tick timer when mechanic is enabled and the game is in an active wave.
+    if (!timerEnabled) {
+      lastTimestampRef.current = null;
+      return;
+    }
+    if (gameState.isGameOver() || gameState.isWaveComplete()) {
+      lastTimestampRef.current = null;
+      return;
+    }
+
+    const now = performance.now();
+    const last = lastTimestampRef.current;
+    lastTimestampRef.current = now;
+    if (last == null) return;
+
+    const deltaSeconds = (now - last) / 1000;
+    if (deltaSeconds <= 0) return;
+
+    const remaining = gameState.getTimerSecondsRemaining();
+    if (remaining <= LEVEL_TIMER_MIN_SECONDS) return;
+
+    const next = Math.max(LEVEL_TIMER_MIN_SECONDS, remaining - deltaSeconds);
+    gameState.setTimerSecondsRemaining(next);
+
+    if (next <= LEVEL_TIMER_MIN_SECONDS && !gameState.isGameOver()) {
+      // Timer expired: trigger standard game over flow.
+      gameState.triggerGameOver();
+    }
+  });
+
+  return <Container />;
+};
+
 const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentProps) => {
   const { width, height, scale } = useDimensions();
   const {
@@ -274,9 +314,12 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   const [bigRedButtonEnabled, setBigRedButtonEnabled] = useState(
     gameState.getBigRedButtonEnabled()
   );
+  // Level countdown timer enabled flag (Executive Order).
+  const [timerEnabled, setTimerEnabled] = useState(gameState.getTimerEnabled());
   useEffect(() => {
     return gameState.subscribe((state) => {
       setBigRedButtonEnabled(state.bigRedButtonEnabled);
+      setTimerEnabled(state.timerEnabled);
     });
   }, []);
 
@@ -699,7 +742,15 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     if (gameState.getKingsMode()) return;
     // Powerup active: immune to damage for the duration of the powerup
     if (gameState.isPowerupActive()) return;
-    // Lose a life
+
+    // Tax Reimbursement (Executive Order):
+    // Enemy bullets never kill the player; instead they deduct score.
+    if (gameState.getTaxReimbursementEnabled()) {
+      gameState.applyTaxReimbursementPenalty(10);
+      return;
+    }
+
+    // Default behavior: lose a life
     gameState.loseLife();
     // Trigger player death animation
     if (playerRef.current) {
@@ -851,6 +902,7 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
               onPlayerHit={handlePlayerHit}
               enemyBulletPositionsRef={enemyBulletPositionsRef}
             />
+            <LevelTimerUpdater timerEnabled={timerEnabled} />
             <PowerupUpdater
               powerups={powerups}
               setPowerups={setPowerups}

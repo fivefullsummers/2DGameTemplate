@@ -1,29 +1,44 @@
 import { useRef, useEffect, useMemo } from "react";
 import * as PIXI from "pixi.js";
 import { Container, useTick } from "@pixi/react";
-import vertexShader from "../shaders/space/vertex.glsl?raw";
-import fragmentShader from "../shaders/space/fragment.glsl?raw";
+import vertexShader from "../shaders/dither/vertex.glsl?raw";
+import fragmentShader from "../shaders/dither/fragment.glsl?raw";
 import { getCachedSpaceNoiseTexture } from "../utils/spaceNoiseTexture";
 
-// Cache the compiled program so we don't recompile the heavy shader on every menu screen mount
-let cachedSpaceProgram: PIXI.Program | null = null;
-function getSpaceProgram(): PIXI.Program {
-  if (!cachedSpaceProgram) {
-    cachedSpaceProgram = PIXI.Program.from(
+// Cache the compiled program so we don't recompile the shader on every menu screen mount
+let cachedDitherProgram: PIXI.Program | null = null;
+function getDitherProgram(): PIXI.Program {
+  if (!cachedDitherProgram) {
+    cachedDitherProgram = PIXI.Program.from(
       vertexShader,
       fragmentShader,
-      "spaceShader"
+      "ditherShader"
     );
   }
-  return cachedSpaceProgram;
+  return cachedDitherProgram;
 }
 
 interface StartScreenBackgroundProps {
   width: number;
   height: number;
+  // Dither ramp exponent r; 1.0 = linear.
+  r?: number;
+  // Number of brightness levels for dithering.
+  levels?: number;
+  // Visual size of each Bayer tile in pixels.
+  ditherScale?: number;
+  // Height of the dithered gradient band as a fraction of screen height (0..1).
+  bandHeight?: number;
 }
 
-const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) => {
+const StartScreenBackground = ({
+  width,
+  height,
+  r = 1.2,
+  levels = 2,
+  ditherScale = 2.5,
+  bandHeight = 0.25,
+}: StartScreenBackgroundProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5, active: 0 });
@@ -74,13 +89,20 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
 
   const shader = useMemo(() => {
     return new PIXI.MeshMaterial(PIXI.Texture.WHITE, {
-      program: getSpaceProgram(),
+      program: getDitherProgram(),
       uniforms: {
         uResolution: new Float32Array([width, height]),
         uTime: 0,
         uMouse: [0.5, 0.5],
         uMouseActive: 0,
         uNoise: noiseTexture,
+        // r parameter for the dither shader's ramp curve.
+        // 1.0 = linear, >1 darkens bottom / compresses top,
+        // <1 brightens bottom / stretches top.
+        uR: r,
+        uLevels: levels,
+        uDitherScale: ditherScale,
+        uBandHeight: bandHeight,
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uResolution updated in useTick
@@ -123,12 +145,20 @@ const StartScreenBackground = ({ width, height }: StartScreenBackgroundProps) =>
         uResolution?: Float32Array | number[];
         uMouse?: number[];
         uMouseActive?: number;
+        uR?: number;
+        uLevels?: number;
+        uDitherScale?: number;
+        uBandHeight?: number;
       };
       if (u) {
         u.uTime = ticker.lastTime / 1000;
         u.uResolution = [width, height];
         u.uMouse = [mouseRef.current.x, mouseRef.current.y];
         u.uMouseActive = mouseRef.current.active;
+        u.uR = r;
+        u.uLevels = levels;
+        u.uDitherScale = ditherScale;
+        u.uBandHeight = bandHeight;
       }
     }
   });

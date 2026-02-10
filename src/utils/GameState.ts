@@ -23,6 +23,9 @@ export const GAME_CONSTANTS = {
   TOTAL_ENEMIES: 55,  // 11 columns × 5 rows in classic Space Invaders
 } as const;
 
+/** Default level countdown timer duration (in seconds). */
+export const LEVEL_TIMER_DEFAULT_SECONDS = 45;
+
 // Interface for game state data
 export interface IGameStateData {
   score: number;
@@ -49,6 +52,12 @@ export interface IGameStateData {
   selectedPlayerId: string; // Current player (key in PLAYER_CONFIGS)
   selectedEnemyTypeId: string; // Current enemy type for the level (key in ENEMY_TYPE_CONFIGS)
   difficulty: GameDifficulty; // Executive Order: enemy shooting aggression (easy / medium / hard)
+  /** Level countdown timer (seconds remaining). Clamped at 0. */
+  timerSecondsRemaining: number;
+  /** Executive Order: enable / disable level countdown timer mechanic. */
+  timerEnabled: boolean;
+  /** Executive Order: Tax Reimbursement; enemy bullets deduct score instead of lives. */
+  taxReimbursementEnabled: boolean;
 }
 
 /** Difficulty level for enemy aggression (shoot rate, bullet count, bullet speed). */
@@ -92,6 +101,11 @@ export class GameState {
   private kingsModeEnabled: boolean = false;
   private bigRedButtonEnabled: boolean = false;
   private difficulty: GameDifficulty = 'medium';
+  private taxReimbursementEnabled: boolean = true;
+
+  // Countdown timer (per-level, used for optional timer-based Game Over).
+  private timerSecondsRemaining: number = LEVEL_TIMER_DEFAULT_SECONDS;
+  private timerEnabled: boolean = true;
 
   // Callbacks for state changes
   private onStateChangeCallbacks: Array<(state: IGameStateData) => void> = [];
@@ -146,6 +160,7 @@ export class GameState {
     this.powerupShotsRemaining = null;
     this.shotsfired = 0;
     this.hits = 0;
+    this.timerSecondsRemaining = LEVEL_TIMER_DEFAULT_SECONDS;
     this.notifyStateChange();
   }
 
@@ -163,6 +178,7 @@ export class GameState {
     this.waveStartScore = this.score;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
+    this.timerSecondsRemaining = LEVEL_TIMER_DEFAULT_SECONDS;
     this.notifyStateChange();
   }
 
@@ -182,6 +198,7 @@ export class GameState {
     this.score = this.waveStartScore;
     this.enemiesRemaining = totalEnemies;
     this.totalEnemies = totalEnemies;
+    this.timerSecondsRemaining = LEVEL_TIMER_DEFAULT_SECONDS;
     this.notifyStateChange();
   }
 
@@ -245,6 +262,27 @@ export class GameState {
   public addLife(): void {
     this.lives = Math.min(this.lives + 1, 9); // Cap at 9 lives for display
     this.notifyStateChange();
+  }
+
+  /**
+   * Apply a flat score penalty (for Tax Reimbursement bullet hits) without affecting
+   * extra-life thresholds or powerup messaging. Score is clamped at 0.
+   */
+  public applyTaxReimbursementPenalty(pointsToSubtract: number): void {
+    if (pointsToSubtract <= 0) return;
+    if (this.score <= 0) return;
+    const previousScore = this.score;
+    this.score = Math.max(0, this.score - pointsToSubtract);
+
+    // If penalty lowered score below current waveStartScore, keep waveStartScore
+    // as-is; it's only used for per-wave score and replay reset.
+    if (this.score < 0) {
+      this.score = 0;
+    }
+
+    if (this.score !== previousScore) {
+      this.notifyStateChange();
+    }
   }
 
   /**
@@ -319,6 +357,9 @@ export class GameState {
       selectedPlayerId: this.selectedPlayerId,
       selectedEnemyTypeId: this.selectedEnemyTypeId,
       difficulty: this.difficulty,
+      timerSecondsRemaining: this.timerSecondsRemaining,
+      timerEnabled: this.timerEnabled,
+      taxReimbursementEnabled: this.taxReimbursementEnabled,
     };
   }
 
@@ -362,6 +403,8 @@ export class GameState {
   private static readonly STORAGE_KEY_BIG_RED_BUTTON = 'spaceInvaders_bigRedButton';
   private static readonly STORAGE_KEY_SELECTED_BULLET = 'spaceInvaders_selectedBulletType';
   private static readonly STORAGE_KEY_DIFFICULTY = 'spaceInvaders_difficulty';
+  private static readonly STORAGE_KEY_TIMER_ENABLED = 'spaceInvaders_timerEnabled';
+  private static readonly STORAGE_KEY_TAX_REIMBURSEMENT = 'spaceInvaders_taxReimbursement';
 
   /** Selected weapon (bullet type key) for Executive Orders dropdown; persists. */
   private selectedBulletType: string = 'basic';
@@ -397,6 +440,14 @@ export class GameState {
       const savedDifficulty = localStorage.getItem(GameState.STORAGE_KEY_DIFFICULTY);
       if (savedDifficulty === 'easy' || savedDifficulty === 'medium' || savedDifficulty === 'hard') {
         this.difficulty = savedDifficulty;
+      }
+      const savedTimerEnabled = localStorage.getItem(GameState.STORAGE_KEY_TIMER_ENABLED);
+      if (savedTimerEnabled !== null) {
+        this.timerEnabled = savedTimerEnabled === 'true';
+      }
+      const savedTax = localStorage.getItem(GameState.STORAGE_KEY_TAX_REIMBURSEMENT);
+      if (savedTax !== null) {
+        this.taxReimbursementEnabled = savedTax === 'true';
       }
     } catch (error) {
       console.warn('Failed to load Executive Orders:', error);
@@ -472,6 +523,74 @@ export class GameState {
     } catch (error) {
       console.warn('Failed to save difficulty:', error);
     }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get whether Tax Reimbursement is enabled (enemy bullets deduct score instead of lives).
+   */
+  public getTaxReimbursementEnabled(): boolean {
+    return this.taxReimbursementEnabled;
+  }
+
+  /**
+   * Enable / disable Tax Reimbursement. Persists to localStorage.
+   */
+  public setTaxReimbursementEnabled(enabled: boolean): void {
+    if (this.taxReimbursementEnabled === enabled) return;
+    this.taxReimbursementEnabled = enabled;
+    try {
+      localStorage.setItem(
+        GameState.STORAGE_KEY_TAX_REIMBURSEMENT,
+        enabled.toString()
+      );
+    } catch (error) {
+      console.warn('Failed to save Tax Reimbursement flag:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get whether the level countdown timer mechanic is enabled.
+   */
+  public getTimerEnabled(): boolean {
+    return this.timerEnabled;
+  }
+
+  /**
+   * Enable / disable the level countdown timer mechanic. Persists to localStorage.
+   * When enabling, the timer is reset to its default duration for the next level start.
+   */
+  public setTimerEnabled(enabled: boolean): void {
+    if (this.timerEnabled === enabled) return;
+    this.timerEnabled = enabled;
+    // Reset timer to default when (re-)enabling so the player always starts fresh.
+    if (enabled) {
+      this.timerSecondsRemaining = LEVEL_TIMER_DEFAULT_SECONDS;
+    }
+    try {
+      localStorage.setItem(GameState.STORAGE_KEY_TIMER_ENABLED, enabled.toString());
+    } catch (error) {
+      console.warn('Failed to save timer enabled flag:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get remaining time on the level countdown timer in seconds.
+   */
+  public getTimerSecondsRemaining(): number {
+    return this.timerSecondsRemaining;
+  }
+
+  /**
+   * Set remaining time on the level countdown timer in seconds.
+   * Value is clamped to be non-negative.
+   */
+  public setTimerSecondsRemaining(seconds: number): void {
+    const clamped = Math.max(0, seconds);
+    if (this.timerSecondsRemaining === clamped) return;
+    this.timerSecondsRemaining = clamped;
     this.notifyStateChange();
   }
 

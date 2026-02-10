@@ -83,6 +83,14 @@
   text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff80;
 }
 
+/* Countdown Timer Styling */
+.hud-timer-value {
+  color: #ffdd55;
+  font-size: 20px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px #ffdd55, 0 0 20px #ffdd5580;
+}
+
 /* Lives Display */
 .hud-lives-display {
   display: flex;

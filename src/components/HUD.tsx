@@ -78,6 +78,17 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
     return score.toString().padStart(6, '0');
   };
 
+  // Format countdown timer as MM:SS (clamped at 0).
+  const formatTimer = (seconds: number): string => {
+    const clamped = Math.max(0, seconds);
+    const wholeSeconds = Math.floor(clamped);
+    const mins = Math.floor(wholeSeconds / 60);
+    const secs = wholeSeconds % 60;
+    const mm = mins.toString().padStart(2, '0');
+    const ss = secs.toString().padStart(2, '0');
+    return `${mm}:${ss}`;
+  };
+
 
   return (
     <div className="hud-container">
@@ -100,6 +111,16 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
           <div className="hud-label">WAVE</div>
           <div className="hud-value wave-value">{state.wave}</div>
         </div>
+
+        {/* Countdown Timer (Executive Order; optional mechanic) */}
+        {state.timerEnabled && (
+          <div className="hud-section hud-timer">
+            <div className="hud-label">TIMER</div>
+            <div className="hud-value hud-timer-value">
+              {formatTimer(state.timerSecondsRemaining)}
+            </div>
+          </div>
+        )}
 
         {/* Lives Section */}
         <div className="hud-section hud-lives">

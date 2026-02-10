@@ -1,8 +1,9 @@
 import { useRef, useEffect, useMemo } from "react";
 import * as PIXI from "pixi.js";
 import { Container, useTick } from "@pixi/react";
-import vertexShader from "../shaders/twinkleStars/vertex.glsl?raw";
-import fragmentShader from "../shaders/twinkleStars/fragment.glsl?raw";
+import vertexShader from "../shaders/dither/vertex.glsl?raw";
+import fragmentShader from "../shaders/dither/fragment.glsl?raw";
+import { getCachedSpaceNoiseTexture } from "../utils/spaceNoiseTexture";
 
 interface GameSpaceBackgroundProps {
   width: number;
@@ -16,6 +17,7 @@ interface GameSpaceBackgroundProps {
 const GameSpaceBackground = ({ width, height }: GameSpaceBackgroundProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);
+  const noiseTexture = getCachedSpaceNoiseTexture();
 
   const geometry = useMemo(() => {
     const positions = [0, height, width, height, width, 0, 0, 0];
@@ -30,16 +32,20 @@ const GameSpaceBackground = ({ width, height }: GameSpaceBackgroundProps) => {
   }, [width, height]);
 
   const shader = useMemo(() => {
-    const program = PIXI.Program.from(
-      vertexShader,
-      fragmentShader,
-      "twinkleStarsShader"
-    );
+    const program = PIXI.Program.from(vertexShader, fragmentShader, "ditherShaderGameplay");
     return new PIXI.MeshMaterial(PIXI.Texture.WHITE, {
       program,
       uniforms: {
         uResolution: new Float32Array([width, height]),
         uTime: 0,
+        uMouse: [0.5, 0.5],
+        uMouseActive: 0,
+        uNoise: noiseTexture,
+        // Gameplay defaults for the ordered dither shader
+        uR: 5.8,
+        uLevels: 12,
+        uDitherScale: 14.5,
+        uBandHeight: 0.55,
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uResolution updated in useTick

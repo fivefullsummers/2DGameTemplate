@@ -142,7 +142,7 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
   const rowSpacing = height * 0.09;
 
   return (
-    <div className="executive-orders-wrap" style={{ width, height }}>
+    <div className="executive-orders-wrap">
       <Stage width={width} height={height}>
         <StartScreenBackground width={width} height={height} />
 

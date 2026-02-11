@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./LoadingScreen.css";
+import backgroundPattern from "../assets/misc/background.png";
 
 interface LoadingScreenProps {
   progress: number;
@@ -26,6 +27,11 @@ const LoadingScreen = ({ progress, currentAsset, error }: LoadingScreenProps) =>
 
   return (
     <div className="loading-screen">
+      <div
+        className="loading-screen-bg"
+        style={{ backgroundImage: `url(${backgroundPattern})` }}
+        aria-hidden
+      />
       <div className="loading-container">
         <h1 className="loading-title">Loading Assets</h1>
         

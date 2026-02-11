@@ -4,6 +4,7 @@ import { Container, useTick } from "@pixi/react";
 import vertexShader from "../shaders/dither/vertex.glsl?raw";
 import fragmentShader from "../shaders/dither/fragment.glsl?raw";
 import { getCachedSpaceNoiseTexture } from "../utils/spaceNoiseTexture";
+import DitherPatternBackground from "./DitherPatternBackground";
 
 // Cache the compiled program so we don't recompile the shader on every menu screen mount
 let cachedDitherProgram: PIXI.Program | null = null;
@@ -24,7 +25,7 @@ export const DITHER_DARK_BLUE = 0x04003d;
 interface StartScreenBackgroundProps {
   width: number;
   height: number;
-  /** When false, render solid dark blue (no shader). When true, use dither shader. */
+  /** When false, use PNG dither pattern (GPU-cheap default). When true, use dither shader. */
   ditherEnabled?: boolean;
   // Dither ramp exponent r; 1.0 = linear.
   r?: number;
@@ -47,7 +48,6 @@ const StartScreenBackground = ({
 }: StartScreenBackgroundProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);
-  const graphicsRef = useRef<PIXI.Graphics | null>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5, active: 0 });
 
   const noiseTexture = getCachedSpaceNoiseTexture();
@@ -113,39 +113,8 @@ const StartScreenBackground = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uResolution updated in useTick
   }, [ditherEnabled]);
 
-  // Solid dark blue when dither is off (no shader loaded)
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || ditherEnabled) return;
-
-    if (!graphicsRef.current) {
-      const g = new PIXI.Graphics();
-      g.beginFill(DITHER_DARK_BLUE);
-      g.drawRect(0, 0, width, height);
-      g.endFill();
-      graphicsRef.current = g;
-      container.addChild(g);
-    } else {
-      const g = graphicsRef.current;
-      g.clear();
-      g.beginFill(DITHER_DARK_BLUE);
-      g.drawRect(0, 0, width, height);
-      g.endFill();
-    }
-
-    return () => {
-      const g = graphicsRef.current;
-      if (g && container) {
-        container.removeChild(g);
-        try {
-          g.destroy();
-        } catch {
-          // Pixi v7 Graphics.destroy() can throw when _geometry is null during unmount
-        }
-        graphicsRef.current = null;
-      }
-    };
-  }, [width, height, ditherEnabled]);
+  // PNG dither pattern (GPU-cheap default) when dither shader is off
+  // Handled by DitherPatternBackground child - no effect needed when ditherEnabled
 
   // Dither mesh when dither is on (shader created only when enabled)
   useEffect(() => {
@@ -216,7 +185,11 @@ const StartScreenBackground = ({
       onpointerupoutside={onPointerUp}
       onpointermove={onPointerMove}
       onpointerout={onPointerOut}
-    />
+    >
+      {!ditherEnabled && (
+        <DitherPatternBackground width={width} height={height} />
+      )}
+    </Container>
   );
 };
 

@@ -4,12 +4,12 @@ import { Container, useTick } from "@pixi/react";
 import vertexShader from "../shaders/dither/vertex.glsl?raw";
 import fragmentShader from "../shaders/dither/fragment.glsl?raw";
 import { getCachedSpaceNoiseTexture } from "../utils/spaceNoiseTexture";
-import { DITHER_DARK_BLUE } from "./StartScreenBackground";
+import DitherPatternBackground from "./DitherPatternBackground";
 
 interface GameSpaceBackgroundProps {
   width: number;
   height: number;
-  /** When false, solid dark blue (no shader). When true, dither gradient + stars. */
+  /** When false, PNG dither pattern (GPU-cheap default). When true, dither gradient + stars. */
   ditherEnabled?: boolean;
 }
 
@@ -19,7 +19,6 @@ interface GameSpaceBackgroundProps {
 const GameSpaceBackground = ({ width, height, ditherEnabled = false }: GameSpaceBackgroundProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);
-  const graphicsRef = useRef<PIXI.Graphics | null>(null);
   const noiseTexture = getCachedSpaceNoiseTexture();
 
   const geometry = useMemo(() => {
@@ -53,39 +52,6 @@ const GameSpaceBackground = ({ width, height, ditherEnabled = false }: GameSpace
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uResolution updated in useTick
   }, [ditherEnabled]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || ditherEnabled) return;
-
-    if (!graphicsRef.current) {
-      const g = new PIXI.Graphics();
-      g.beginFill(DITHER_DARK_BLUE);
-      g.drawRect(0, 0, width, height);
-      g.endFill();
-      graphicsRef.current = g;
-      container.addChild(g);
-    } else {
-      const g = graphicsRef.current;
-      g.clear();
-      g.beginFill(DITHER_DARK_BLUE);
-      g.drawRect(0, 0, width, height);
-      g.endFill();
-    }
-
-    return () => {
-      const g = graphicsRef.current;
-      if (g && container) {
-        container.removeChild(g);
-        try {
-          g.destroy();
-        } catch {
-          // Pixi v7 Graphics.destroy() can throw when _geometry is null during unmount
-        }
-        graphicsRef.current = null;
-      }
-    };
-  }, [width, height, ditherEnabled]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -132,7 +98,13 @@ const GameSpaceBackground = ({ width, height, ditherEnabled = false }: GameSpace
     }
   });
 
-  return <Container ref={containerRef} />;
+  return (
+    <Container ref={containerRef}>
+      {!ditherEnabled && (
+        <DitherPatternBackground width={width} height={height} />
+      )}
+    </Container>
+  );
 };
 
 export default GameSpaceBackground;

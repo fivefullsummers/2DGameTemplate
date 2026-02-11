@@ -4,6 +4,7 @@ import * as PIXI from "pixi.js";
 import { Graphics as PixiGraphics } from "pixi.js";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import TiledDitherBackground from "./TiledDitherBackground";
 import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
@@ -271,7 +272,12 @@ const PlayerSelectContent = ({
 
   return (
     <>
-      <StartScreenBackground width={width} height={height} ditherEnabled={ditherEnabled} />
+      {!ditherEnabled && (
+        <TiledDitherBackground width={width} height={height} />
+      )}
+      {ditherEnabled && (
+        <StartScreenBackground width={width} height={height} ditherEnabled={true} />
+      )}
 
       {/* Title: separate container, placed higher */}
       <Container x={width / 2} y={titleY + TITLE_HEIGHT / 2}>

@@ -7,6 +7,7 @@ import heroExplosionAsset from "../assets/hero/cool_explosion.png";
 import enemyAnimatedAsset from "../assets/enemies/enemy.png";
 import enemyExplosionAsset from "../assets/enemies/enemy_explosion.png";
 import mapAsset from "../assets/back.png";
+import backgroundPatternAsset from "../assets/misc/background.png";
 import gunsAsset from "../assets/misc/shot.png";
 import powerupGunsAsset from "../assets/misc/guns.png";
 import explosionSound from "../assets/sounds/explosion.wav";
@@ -56,6 +57,11 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
     alias: "level-map",
     src: mapAsset,
     description: "Game level map",
+  },
+  {
+    alias: "dither-pattern",
+    src: backgroundPatternAsset,
+    description: "Dither pattern background (GPU-cheap fallback)",
   },
   {
     alias: "guns",
@@ -131,6 +137,9 @@ export const ASSET_MANIFEST: AssetDefinition[] = [
 
 /** Resolved URL for powerup guns spritesheet (guns.png); use for DOM img/background, same source as Powerup. */
 export const powerupGunsUrl = powerupGunsAsset as string;
+
+/** Resolved URL for dither pattern background - use when Assets.get fails (e.g. cache key mismatch). */
+export const ditherPatternUrl = backgroundPatternAsset as string;
 
 /**
  * Progress callback type

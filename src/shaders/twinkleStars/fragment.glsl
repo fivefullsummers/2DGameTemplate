@@ -1,4 +1,4 @@
-precision lowp float;
+precision mediump float;
 
 varying vec2 vUV;
 
@@ -16,8 +16,9 @@ void main() {
     // Midnight black background (dark with a hint of blue)
     vec3 color = vec3(0.01, 0.01, 0.06);
 
-    // Grid of star cells (~10x fewer than before: 15x15 = 225 stars)
-    const float gridSize = 15.0;
+    // Grid of star cells. Slightly fewer cells than before for better performance.
+    // 12x12 = 144 potential stars instead of 225.
+    const float gridSize = 10.0;
     vec2 cell = floor(uv * gridSize);
     vec2 cellUV = fract(uv * gridSize);
 

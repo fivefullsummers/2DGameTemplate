@@ -46,8 +46,8 @@ const MobileControlsBar = ({
         position: "relative",
         width: "100%",
         height: "100%",
-        // Match the dark blue from the dithered background (#04003d)
-        backgroundColor: "#04003d",
+        // Match twinkle stars shader background: vec3(0.01, 0.01, 0.06) → rgb(3, 3, 15)
+        backgroundColor: "rgb(3, 3, 15)",
       }}
     >
       <MobileTwoButtonController

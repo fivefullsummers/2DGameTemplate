@@ -37,8 +37,7 @@ import {
   POWERUP_SPRITE_FRAME_OFFSET,
 } from "../consts/bullet-config";
 import { PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
-import GameSpaceBackground from "./GameSpaceBackground";
-import TiledDitherBackground from "./TiledDitherBackground";
+import SpaceGameBackground from "./SpaceGameBackground";
 import CRTOverlay from "./CRTOverlay";
 import MobileControlsBar from "./MobileControlsBar";
 import {
@@ -295,7 +294,6 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     motionBlurEnabled,
     motionBlurSettings,
     retroScanlinesEnabled,
-    ditherEnabled,
     crtSettings,
   } = useVisualSettings();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
@@ -881,17 +879,8 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           height={stageHeight}
           onPointerDown={handleStageClick}
         >
-          {/* Cheap image-based dither by default; heavy shader when enabled */}
-          {!ditherEnabled && (
-            <TiledDitherBackground width={width} height={stageHeight} />
-          )}
-          {ditherEnabled && (
-            <GameSpaceBackground
-              width={width}
-              height={stageHeight}
-              ditherEnabled={true}
-            />
-          )}
+          {/* Space-flight shader background (spaceGame) behind gameplay. */}
+          <SpaceGameBackground width={width} height={stageHeight} />
           <Container
             scale={scale}
             x={horizontalOffset}

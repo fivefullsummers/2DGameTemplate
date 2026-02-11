@@ -87,35 +87,13 @@ const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwo
           width: `${MOBILE_MOVE_BUTTON_SIZE}px`,
           height: `${MOBILE_MOVE_BUTTON_SIZE}px`,
           borderRadius: '50%',
-          backgroundColor: leftPressed
-            ? 'rgba(255, 255, 255, 0.9)'
-            : 'rgba(255, 255, 255, 0.6)',
-          border: '3px solid rgba(0, 0, 0, 0.4)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          boxShadow: leftPressed ? '0 0 15px rgba(255, 255, 255, 0.8)' : '0 4px 10px rgba(0, 0, 0, 0.4)',
+          backgroundColor: leftPressed ? 'rgba(160, 160, 160, 0.2)' : 'rgba(160, 160, 160, 0.1)',
+          border: 'none',
+          boxShadow: 'none',
           userSelect: 'none',
           touchAction: 'none',
         }}
-      >
-        <span
-          style={{
-            fontSize: '32px',
-            color: 'rgba(0, 0, 0, 0.8)',
-            lineHeight: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '1em',
-            height: '1em',
-            transform: 'translateX(-1px)',
-          }}
-          aria-hidden
-        >
-          ◄
-        </span>
-      </div>
+      />
 
       {/* Right button */}
       <div
@@ -128,35 +106,13 @@ const MobileTwoButtonController = ({ onDirectionChange, onRunChange }: MobileTwo
           width: `${MOBILE_MOVE_BUTTON_SIZE}px`,
           height: `${MOBILE_MOVE_BUTTON_SIZE}px`,
           borderRadius: '50%',
-          backgroundColor: rightPressed
-            ? 'rgba(255, 255, 255, 0.9)'
-            : 'rgba(255, 255, 255, 0.6)',
-          border: '3px solid rgba(0, 0, 0, 0.4)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          boxShadow: rightPressed ? '0 0 15px rgba(255, 255, 255, 0.8)' : '0 4px 10px rgba(0, 0, 0, 0.4)',
+          backgroundColor: rightPressed ? 'rgba(160, 160, 160, 0.2)' : 'rgba(160, 160, 160, 0.1)',
+          border: 'none',
+          boxShadow: 'none',
           userSelect: 'none',
           touchAction: 'none',
         }}
-      >
-        <span
-          style={{
-            fontSize: '32px',
-            color: 'rgba(0, 0, 0, 0.8)',
-            lineHeight: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '1em',
-            height: '1em',
-            transform: 'translateX(1px)',
-          }}
-          aria-hidden
-        >
-          ►
-        </span>
-      </div>
+      />
     </div>
   );
 };

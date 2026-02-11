@@ -36,9 +36,8 @@ const MobileControlsBar = ({
   }
 
   // This bar lives at the bottom of the screen (via marginTop: 'auto'
-  // on its parent container in Experience.tsx). The individual
-  // controls are absolutely positioned within this bar, anchored to
-  // the bottom of the bar (not the viewport).
+  // on its parent container in Experience.tsx). Background is transparent
+  // so the full-height tiled background in Experience shows through.
   return (
     <div
       id="mobile-controls-bar"
@@ -46,8 +45,7 @@ const MobileControlsBar = ({
         position: "relative",
         width: "100%",
         height: "100%",
-        // Match twinkle stars shader background: vec3(0.01, 0.01, 0.06) → rgb(3, 3, 15)
-        backgroundColor: "rgb(3, 3, 15)",
+        backgroundColor: "transparent",
       }}
     >
       <MobileTwoButtonController

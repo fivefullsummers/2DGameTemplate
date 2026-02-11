@@ -17,7 +17,7 @@ import { VisualSettingsProvider } from "./contexts/VisualSettingsContext"
 type GameState = 'menu' | 'options' | 'executiveOrders' | 'playerSelect' | 'preGame' | 'playing' | 'gameOver' | 'levelComplete';
 
 export const App = () => {
-  const { isLoading, progress, currentAsset, error } = useAssetLoader();
+  const { isLoading, progress, currentAsset, error, gpuCapability } = useAssetLoader();
   const [currentGameState, setCurrentGameState] = useState<GameState>('menu');
   
   const handleStartGame = () => {
@@ -112,7 +112,7 @@ export const App = () => {
   }
 
   return (
-    <VisualSettingsProvider>
+    <VisualSettingsProvider gpuCapability={gpuCapability}>
       {currentGameState === "menu" && (
         <StartScreen onStartGame={handleStartGame} onOpenOptions={handleOpenOptions} />
       )}

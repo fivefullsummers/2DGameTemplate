@@ -14,15 +14,10 @@ interface StartScreenProps {
 
 const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
   const { width, height } = useDimensions();
-  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
+  const { retroScanlinesEnabled, ditherEnabled, crtSettings } = useVisualSettings();
   const [isHovering, setIsHovering] = useState(false);
   const [isOptionsHovering, setIsOptionsHovering] = useState(false);
   const [titleScale, setTitleScale] = useState(1 / 2);
-  // Live tweaks for the dither shader
-  const [ditherR, setDitherR] = useState(5.8);
-  const [ditherLevels, setDitherLevels] = useState(12);
-  const [ditherScale, setDitherScale] = useState(14.5);
-  const [ditherBandHeight, setDitherBandHeight] = useState(0.55);
 
   // Animate title with a pulsing effect
   useMemo(() => {
@@ -111,14 +106,11 @@ const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
   return (
     <>
       <Stage width={width} height={height}>
-        {/* Shader Background Mesh */}
+        {/* Background: solid dark blue when dither off, dither gradient when on */}
         <StartScreenBackground
           width={width}
           height={height}
-          r={ditherR}
-          levels={ditherLevels}
-          ditherScale={ditherScale}
-          bandHeight={ditherBandHeight}
+          ditherEnabled={ditherEnabled}
         />
 
       {/* Title */}
@@ -176,77 +168,6 @@ const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
           />
         )}
       </Stage>
-
-      {/* On-screen dither tweaker (temporary, start screen only) */}
-      <div
-        style={{
-          position: "fixed",
-          left: 16,
-          bottom: 16,
-          padding: "8px 10px 10px",
-          borderRadius: 8,
-          background: "rgba(0, 0, 0, 0.75)",
-          border: "2px solid #00ff88",
-          color: "#00ff88",
-          fontFamily: "Neopixel, sans-serif",
-          fontSize: 9,
-          zIndex: 9999,
-        }}
-      >
-        <div style={{ marginBottom: 4 }}>Dither controls</div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-          <span style={{ whiteSpace: "nowrap", minWidth: 80 }}>r: {ditherR.toFixed(2)}</span>
-          <input
-            type="range"
-            min={0.4}
-            max={10.0}
-            step={0.05}
-            value={ditherR}
-            onChange={(e) => setDitherR(Number(e.target.value))}
-          />
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-          <span style={{ whiteSpace: "nowrap", minWidth: 80 }}>Levels: {ditherLevels}</span>
-          <input
-            type="range"
-            min={2}
-            max={24}
-            step={1}
-            value={ditherLevels}
-            onChange={(e) => setDitherLevels(Number(e.target.value))}
-          />
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-          <span style={{ whiteSpace: "nowrap", minWidth: 80 }}>
-            Band: {ditherBandHeight.toFixed(2)}
-          </span>
-          <input
-            type="range"
-            min={0.1}
-            max={1}
-            step={0.05}
-            value={ditherBandHeight}
-            onChange={(e) => setDitherBandHeight(Number(e.target.value))}
-          />
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ whiteSpace: "nowrap", minWidth: 80 }}>
-            Scale: {ditherScale.toFixed(1)}
-          </span>
-          <input
-            type="range"
-            min={1}
-            max={16}
-            step={0.5}
-            value={ditherScale}
-            onChange={(e) => setDitherScale(Number(e.target.value))}
-          />
-        </div>
-      </div>
     </>
   );
 };

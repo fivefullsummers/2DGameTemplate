@@ -18,9 +18,14 @@ function getDitherProgram(): PIXI.Program {
   return cachedDitherProgram;
 }
 
+/** Dark blue from the dither shader gradient (bottom color #04003d). */
+export const DITHER_DARK_BLUE = 0x04003d;
+
 interface StartScreenBackgroundProps {
   width: number;
   height: number;
+  /** When false, render solid dark blue (no shader). When true, use dither shader. */
+  ditherEnabled?: boolean;
   // Dither ramp exponent r; 1.0 = linear.
   r?: number;
   // Number of brightness levels for dithering.
@@ -34,6 +39,7 @@ interface StartScreenBackgroundProps {
 const StartScreenBackground = ({
   width,
   height,
+  ditherEnabled = false,
   r = 5.8,
   levels = 12,
   ditherScale = 14.5,
@@ -41,6 +47,7 @@ const StartScreenBackground = ({
 }: StartScreenBackgroundProps) => {
   const containerRef = useRef<PIXI.Container>(null);
   const meshRef = useRef<PIXI.Mesh | null>(null);
+  const graphicsRef = useRef<PIXI.Graphics | null>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5, active: 0 });
 
   const noiseTexture = getCachedSpaceNoiseTexture();
@@ -88,6 +95,7 @@ const StartScreenBackground = ({
   }, [width, height]);
 
   const shader = useMemo(() => {
+    if (!ditherEnabled) return null;
     return new PIXI.MeshMaterial(PIXI.Texture.WHITE, {
       program: getDitherProgram(),
       uniforms: {
@@ -96,9 +104,6 @@ const StartScreenBackground = ({
         uMouse: [0.5, 0.5],
         uMouseActive: 0,
         uNoise: noiseTexture,
-        // r parameter for the dither shader's ramp curve.
-        // 1.0 = linear, >1 darkens bottom / compresses top,
-        // <1 brightens bottom / stretches top.
         uR: r,
         uLevels: levels,
         uDitherScale: ditherScale,
@@ -106,11 +111,46 @@ const StartScreenBackground = ({
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uResolution updated in useTick
-  }, []);
+  }, [ditherEnabled]);
 
+  // Solid dark blue when dither is off (no shader loaded)
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || ditherEnabled) return;
+
+    if (!graphicsRef.current) {
+      const g = new PIXI.Graphics();
+      g.beginFill(DITHER_DARK_BLUE);
+      g.drawRect(0, 0, width, height);
+      g.endFill();
+      graphicsRef.current = g;
+      container.addChild(g);
+    } else {
+      const g = graphicsRef.current;
+      g.clear();
+      g.beginFill(DITHER_DARK_BLUE);
+      g.drawRect(0, 0, width, height);
+      g.endFill();
+    }
+
+    return () => {
+      const g = graphicsRef.current;
+      if (g && container) {
+        container.removeChild(g);
+        try {
+          g.destroy();
+        } catch {
+          // Pixi v7 Graphics.destroy() can throw when _geometry is null during unmount
+        }
+        graphicsRef.current = null;
+      }
+    };
+  }, [width, height, ditherEnabled]);
+
+  // Dither mesh when dither is on (shader created only when enabled)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !ditherEnabled || !shader) return;
 
     if (!meshRef.current) {
       const mesh = new PIXI.Mesh(geometry, shader);
@@ -120,6 +160,7 @@ const StartScreenBackground = ({
       container.addChild(mesh);
     } else {
       meshRef.current.geometry = geometry;
+      meshRef.current.shader = shader;
     }
 
     return () => {
@@ -127,6 +168,8 @@ const StartScreenBackground = ({
       if (mesh && container) {
         container.removeChild(mesh);
         const geom = mesh.geometry;
+        const mat = mesh.shader as PIXI.MeshMaterial | undefined;
+        if (mat && typeof mat.destroy === "function") mat.destroy();
         mesh.destroy();
         if (geom && typeof geom.destroy === "function" && !(geom as { _destroyed?: boolean })._destroyed) {
           geom.destroy();
@@ -134,9 +177,10 @@ const StartScreenBackground = ({
         meshRef.current = null;
       }
     };
-  }, [geometry, shader]);
+  }, [geometry, shader, ditherEnabled]);
 
   useTick((_delta, ticker) => {
+    if (!ditherEnabled) return;
     const mesh = meshRef.current;
     if (mesh?.shader) {
       const material = mesh.shader as PIXI.MeshMaterial;

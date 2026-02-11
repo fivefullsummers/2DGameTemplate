@@ -172,11 +172,13 @@ const weaponValueStyle = new TextStyle({
 const PlayerSelectContent = ({
   width,
   height,
+  ditherEnabled,
   onContinue,
   onBack,
 }: {
   width: number;
   height: number;
+  ditherEnabled: boolean;
   onContinue: (selectedPlayerId: string) => void;
   onBack?: () => void;
 }) => {
@@ -269,7 +271,7 @@ const PlayerSelectContent = ({
 
   return (
     <>
-      <StartScreenBackground width={width} height={height} />
+      <StartScreenBackground width={width} height={height} ditherEnabled={ditherEnabled} />
 
       {/* Title: separate container, placed higher */}
       <Container x={width / 2} y={titleY + TITLE_HEIGHT / 2}>
@@ -335,12 +337,13 @@ const PlayerSelectContent = ({
 
 const PlayerSelectScreen = ({ onContinue, onBack }: PlayerSelectScreenProps) => {
   const { width, height } = useDimensions();
-  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
+  const { retroScanlinesEnabled, ditherEnabled, crtSettings } = useVisualSettings();
   return (
     <Stage width={width} height={height}>
       <PlayerSelectContent
         width={width}
         height={height}
+        ditherEnabled={ditherEnabled}
         onContinue={onContinue}
         onBack={onBack}
       />

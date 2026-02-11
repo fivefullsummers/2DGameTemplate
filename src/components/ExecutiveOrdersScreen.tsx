@@ -14,8 +14,14 @@ interface ExecutiveOrdersScreenProps {
 }
 
 const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
-  const { width, height } = useDimensions();
-  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
+  const { width, height: logicalHeight } = useDimensions();
+  // For Executive Orders, stretch the shader to the full viewport height so
+  // the dithered background cleanly fills 100vh on mobile as well as desktop.
+  const height =
+    typeof window !== "undefined" && window.innerHeight
+      ? window.innerHeight
+      : logicalHeight;
+  const { retroScanlinesEnabled, ditherEnabled, crtSettings } = useVisualSettings();
   const [hoverButton, setHoverButton] = useState<
     "back" | "kings" | "bigred" | "tax" | "timer" | "diff-i" | "diff-o" | "diff-u" | null
   >(null);
@@ -135,16 +141,17 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
     setDifficulty(level);
   };
 
-  // Vertical layout: spread options evenly down the screen so text never overlaps,
-  // and make better use of full height across desktop and tall mobile.
+  // Vertical layout: spread options down the screen so text never overlaps.
+  // Slightly larger row spacing so each option block has more breathing room,
+  // especially on tall mobile.
   const titleY = height * 0.16;
   const firstRowY = height * 0.32;
-  const rowSpacing = height * 0.09;
+  const rowSpacing = height * 0.11;
 
   return (
     <div className="executive-orders-wrap">
       <Stage width={width} height={height}>
-        <StartScreenBackground width={width} height={height} />
+        <StartScreenBackground width={width} height={height} ditherEnabled={ditherEnabled} />
 
         <Container x={width / 2} y={titleY}>
           <Text text="EXECUTIVE ORDERS" anchor={0.5} style={titleStyle} />
@@ -342,35 +349,26 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
         </Container>
       </Container>
 
-      <Container
-        x={width / 2}
-        y={height * 0.86}
-        eventMode="static"
-        cursor="pointer"
-        pointerdown={handleBack}
-        pointerover={() => setHoverButton("back")}
-        pointerout={() => setHoverButton(null)}
-      >
-        <Text
-          text="BACK"
-          anchor={0.5}
-          style={buttonStyle}
-          scale={{
-            x: hoverButton === "back" ? 1.1 : 1,
-            y: hoverButton === "back" ? 1.1 : 1,
-          }}
+      {retroScanlinesEnabled && (
+        <CRTOverlay
+          width={width}
+          height={height}
+          uScan={crtSettings.uScan}
+          uWarp={crtSettings.uWarp}
         />
-      </Container>
-
-        {retroScanlinesEnabled && (
-          <CRTOverlay
-            width={width}
-            height={height}
-            uScan={crtSettings.uScan}
-            uWarp={crtSettings.uWarp}
-          />
-        )}
+      )}
       </Stage>
+
+      {/* Fixed bottom back bar so the BACK button always aligns with the screen bottom */}
+      <div className="executive-orders-back-bar">
+        <button
+          type="button"
+          className="executive-orders-back-button"
+          onClick={handleBack}
+        >
+          BACK
+        </button>
+      </div>
     </div>
   );
 };

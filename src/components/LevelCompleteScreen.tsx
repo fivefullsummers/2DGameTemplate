@@ -16,7 +16,7 @@ interface LevelCompleteScreenProps {
 
 const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScreenProps) => {
   const { width, height } = useDimensions();
-  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
+  const { retroScanlinesEnabled, ditherEnabled, crtSettings } = useVisualSettings();
   const [hoverButton, setHoverButton] = useState<"next" | "replay" | "exit" | null>(null);
 
   const state = gameState.getState();
@@ -77,7 +77,7 @@ const LevelCompleteScreen = ({ onNextLevel, onReplay, onExit }: LevelCompleteScr
   return (
     <Stage width={width} height={height}>
       {/* Background */}
-      <StartScreenBackground width={width} height={height} />
+      <StartScreenBackground width={width} height={height} ditherEnabled={ditherEnabled} />
 
       {/* Title */}
       <Container x={width / 2} y={height / 4}>

@@ -38,17 +38,17 @@ function getWebGLContext(
 ): WebGLRenderingContext | WebGL2RenderingContext | null {
   const attrs = { alpha: false, antialias: false, failIfMajorPerformanceCaveat: true };
   if (version === 2) {
-    return (
+    const ctx =
       canvas.getContext("webgl2", attrs) ||
       canvas.getContext("experimental-webgl2", attrs) ||
-      null
-    );
+      null;
+    return ctx as WebGL2RenderingContext | null;
   }
-  return (
+  const ctx =
     canvas.getContext("webgl", attrs) ||
     canvas.getContext("experimental-webgl", attrs) ||
-    null
-  );
+    null;
+  return ctx as WebGLRenderingContext | null;
 }
 
 function compileShader(

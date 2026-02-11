@@ -58,6 +58,14 @@ export interface IGameStateData {
   timerEnabled: boolean;
   /** Executive Order: Tax Reimbursement; enemy bullets deduct score instead of lives. */
   taxReimbursementEnabled: boolean;
+  /** Executive Order: HUD stats visibility – high score section. */
+  hudShowHighScore: boolean;
+  /** Executive Order: HUD stats visibility – lives counter. */
+  hudShowLives: boolean;
+  /** Executive Order: HUD stats visibility – weapon label. */
+  hudShowWeapon: boolean;
+  /** Executive Order: Extra Life feature – multi-life + score-based extra lives. */
+  extraLifeEnabled: boolean;
 }
 
 /** Difficulty level for enemy aggression (shoot rate, bullet count, bullet speed). */
@@ -102,6 +110,10 @@ export class GameState {
   private bigRedButtonEnabled: boolean = false;
   private difficulty: GameDifficulty = 'medium';
   private taxReimbursementEnabled: boolean = true;
+  private hudShowHighScore: boolean = true;
+  private hudShowLives: boolean = true;
+  private hudShowWeapon: boolean = true;
+  private extraLifeEnabled: boolean = false;
 
   // Countdown timer (per-level, used for optional timer-based Game Over).
   private timerSecondsRemaining: number = LEVEL_TIMER_DEFAULT_SECONDS;
@@ -208,23 +220,27 @@ export class GameState {
   public addScore(points: number): void {
     const previousScore = this.score;
     this.score += points;
-    
-    // Award extra life every EXTRA_LIFE_THRESHOLD points (1500, 3000, 4500...)
-    const prevMultiple = Math.floor(previousScore / GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD);
-    const currMultiple = Math.floor(this.score / GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD);
-    if (currMultiple > prevMultiple) {
-      const livesToAdd = currMultiple - prevMultiple;
-      for (let i = 0; i < livesToAdd; i++) {
-        this.addLife();
+
+    // Extra Life Executive Order: when disabled, score still increases but
+    // we do NOT award extra lives at score thresholds or show the toast.
+    if (this.extraLifeEnabled) {
+      // Award extra life every EXTRA_LIFE_THRESHOLD points (1500, 3000, 4500...)
+      const prevMultiple = Math.floor(previousScore / GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD);
+      const currMultiple = Math.floor(this.score / GAME_CONSTANTS.EXTRA_LIFE_THRESHOLD);
+      if (currMultiple > prevMultiple) {
+        const livesToAdd = currMultiple - prevMultiple;
+        for (let i = 0; i < livesToAdd; i++) {
+          this.addLife();
+        }
+        this.extraLifeAwarded = true;
+        this.showExtraLifeMessage = true;
+        this.clearExtraLifeMessageTimeout();
+        this.extraLifeMessageTimeoutId = setTimeout(() => {
+          this.extraLifeMessageTimeoutId = null;
+          this.showExtraLifeMessage = false;
+          this.notifyStateChange();
+        }, 2500); // Match HUD animation duration
       }
-      this.extraLifeAwarded = true;
-      this.showExtraLifeMessage = true;
-      this.clearExtraLifeMessageTimeout();
-      this.extraLifeMessageTimeoutId = setTimeout(() => {
-        this.extraLifeMessageTimeoutId = null;
-        this.showExtraLifeMessage = false;
-        this.notifyStateChange();
-      }, 2500); // Match HUD animation duration
     }
     
     // Update high score if needed
@@ -360,6 +376,10 @@ export class GameState {
       timerSecondsRemaining: this.timerSecondsRemaining,
       timerEnabled: this.timerEnabled,
       taxReimbursementEnabled: this.taxReimbursementEnabled,
+      hudShowHighScore: this.hudShowHighScore,
+      hudShowLives: this.hudShowLives,
+      hudShowWeapon: this.hudShowWeapon,
+      extraLifeEnabled: this.extraLifeEnabled,
     };
   }
 
@@ -405,6 +425,10 @@ export class GameState {
   private static readonly STORAGE_KEY_DIFFICULTY = 'spaceInvaders_difficulty';
   private static readonly STORAGE_KEY_TIMER_ENABLED = 'spaceInvaders_timerEnabled';
   private static readonly STORAGE_KEY_TAX_REIMBURSEMENT = 'spaceInvaders_taxReimbursement';
+  private static readonly STORAGE_KEY_HUD_SHOW_HIGH_SCORE = 'spaceInvaders_hudShowHighScore';
+  private static readonly STORAGE_KEY_HUD_SHOW_LIVES = 'spaceInvaders_hudShowLives';
+  private static readonly STORAGE_KEY_HUD_SHOW_WEAPON = 'spaceInvaders_hudShowWeapon';
+  private static readonly STORAGE_KEY_EXTRA_LIFE_ENABLED = 'spaceInvaders_extraLifeEnabled';
 
   /** Selected weapon (bullet type key) for Executive Orders dropdown; persists. */
   private selectedBulletType: string = 'basic';
@@ -448,6 +472,22 @@ export class GameState {
       const savedTax = localStorage.getItem(GameState.STORAGE_KEY_TAX_REIMBURSEMENT);
       if (savedTax !== null) {
         this.taxReimbursementEnabled = savedTax === 'true';
+      }
+      const savedHudHigh = localStorage.getItem(GameState.STORAGE_KEY_HUD_SHOW_HIGH_SCORE);
+      if (savedHudHigh !== null) {
+        this.hudShowHighScore = savedHudHigh === 'true';
+      }
+      const savedHudLives = localStorage.getItem(GameState.STORAGE_KEY_HUD_SHOW_LIVES);
+      if (savedHudLives !== null) {
+        this.hudShowLives = savedHudLives === 'true';
+      }
+      const savedHudWeapon = localStorage.getItem(GameState.STORAGE_KEY_HUD_SHOW_WEAPON);
+      if (savedHudWeapon !== null) {
+        this.hudShowWeapon = savedHudWeapon === 'true';
+      }
+      const savedExtraLife = localStorage.getItem(GameState.STORAGE_KEY_EXTRA_LIFE_ENABLED);
+      if (savedExtraLife !== null) {
+        this.extraLifeEnabled = savedExtraLife === 'true';
       }
     } catch (error) {
       console.warn('Failed to load Executive Orders:', error);
@@ -546,6 +586,89 @@ export class GameState {
       );
     } catch (error) {
       console.warn('Failed to save Tax Reimbursement flag:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Get HUD stats visibility flags.
+   */
+  public getHudShowHighScore(): boolean {
+    return this.hudShowHighScore;
+  }
+
+  public getHudShowLives(): boolean {
+    return this.hudShowLives;
+  }
+
+  public getHudShowWeapon(): boolean {
+    return this.hudShowWeapon;
+  }
+
+  /**
+   * Set HUD stats visibility flags. Each persists independently.
+   */
+  public setHudShowHighScore(enabled: boolean): void {
+    if (this.hudShowHighScore === enabled) return;
+    this.hudShowHighScore = enabled;
+    try {
+      localStorage.setItem(
+        GameState.STORAGE_KEY_HUD_SHOW_HIGH_SCORE,
+        enabled.toString()
+      );
+    } catch (error) {
+      console.warn('Failed to save HUD high score flag:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  public setHudShowLives(enabled: boolean): void {
+    if (this.hudShowLives === enabled) return;
+    this.hudShowLives = enabled;
+    try {
+      localStorage.setItem(
+        GameState.STORAGE_KEY_HUD_SHOW_LIVES,
+        enabled.toString()
+      );
+    } catch (error) {
+      console.warn('Failed to save HUD lives flag:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  public setHudShowWeapon(enabled: boolean): void {
+    if (this.hudShowWeapon === enabled) return;
+    this.hudShowWeapon = enabled;
+    try {
+      localStorage.setItem(
+        GameState.STORAGE_KEY_HUD_SHOW_WEAPON,
+        enabled.toString()
+      );
+    } catch (error) {
+      console.warn('Failed to save HUD weapon flag:', error);
+    }
+    this.notifyStateChange();
+  }
+
+  /**
+   * Extra Life Executive Order – when enabled, the player has multiple
+   * lives and earns extra lives every few points. When disabled, hits
+   * trigger immediate game over instead of consuming a life.
+   */
+  public getExtraLifeEnabled(): boolean {
+    return this.extraLifeEnabled;
+  }
+
+  public setExtraLifeEnabled(enabled: boolean): void {
+    if (this.extraLifeEnabled === enabled) return;
+    this.extraLifeEnabled = enabled;
+    try {
+      localStorage.setItem(
+        GameState.STORAGE_KEY_EXTRA_LIFE_ENABLED,
+        enabled.toString()
+      );
+    } catch (error) {
+      console.warn('Failed to save Extra Life flag:', error);
     }
     this.notifyStateChange();
   }

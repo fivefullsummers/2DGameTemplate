@@ -11,11 +11,13 @@ const KEY_MOTION_BLUR_STRENGTH = "game-motion-blur-strength";
 const KEY_MOTION_BLUR_DECAY = "game-motion-blur-decay";
 const KEY_MOTION_BLUR_RAMP = "game-motion-blur-ramp";
 const KEY_MOTION_BLUR_SCALE = "game-motion-blur-movement-scale";
+const KEY_DITHER_ENABLED = "game-dither-enabled";
 
-const DEFAULT_RETRO_ENABLED = true;
+const DEFAULT_RETRO_ENABLED = false;
 const DEFAULT_RETRO_SCAN = 0.3;
 const DEFAULT_RETRO_WARP = 0;
-const DEFAULT_MOTION_BLUR_ENABLED = true;
+const DEFAULT_MOTION_BLUR_ENABLED = false;
+const DEFAULT_DITHER_ENABLED = false;
 const DEFAULT_MOTION_BLUR_STRENGTH = 14;
 const DEFAULT_MOTION_BLUR_DECAY = 1.0;
 const DEFAULT_MOTION_BLUR_RAMP = 0.9;
@@ -113,4 +115,12 @@ export function getDefaultMotionBlurSettings(): MotionBlurSettings {
     rampSpeed: DEFAULT_MOTION_BLUR_RAMP,
     movementScale: DEFAULT_MOTION_BLUR_SCALE,
   };
+}
+
+export function getDitherEnabled(): boolean {
+  return getBool(KEY_DITHER_ENABLED, DEFAULT_DITHER_ENABLED);
+}
+
+export function setDitherEnabled(enabled: boolean): void {
+  setBool(KEY_DITHER_ENABLED, enabled);
 }

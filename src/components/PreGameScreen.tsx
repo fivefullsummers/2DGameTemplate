@@ -78,6 +78,7 @@ const missionLineStyle = new TextStyle({
 const PreGameContent = ({
   width,
   height,
+  ditherEnabled,
   selectedPlayerId,
   enemyTypeId,
   onReady,
@@ -85,6 +86,7 @@ const PreGameContent = ({
 }: {
   width: number;
   height: number;
+  ditherEnabled: boolean;
   selectedPlayerId: string;
   enemyTypeId: string;
   onReady: () => void;
@@ -166,7 +168,7 @@ const PreGameContent = ({
 
   return (
     <>
-      <StartScreenBackground width={width} height={height} />
+      <StartScreenBackground width={width} height={height} ditherEnabled={ditherEnabled} />
 
       <Container x={width / 2} y={height * 0.08}>
         <Text text="TAX EVADERS" anchor={0.5} style={titleStyle} />
@@ -267,7 +269,7 @@ const PreGameScreen = ({
   onBack,
 }: PreGameScreenProps) => {
   const { width, height } = useDimensions();
-  const { retroScanlinesEnabled, crtSettings } = useVisualSettings();
+  const { retroScanlinesEnabled, ditherEnabled, crtSettings } = useVisualSettings();
   const effectiveEnemyTypeId = ENEMY_TYPE_IDS.includes(enemyTypeId)
     ? enemyTypeId
     : DEFAULT_ENEMY_TYPE_ID;
@@ -277,6 +279,7 @@ const PreGameScreen = ({
       <PreGameContent
         width={width}
         height={height}
+        ditherEnabled={ditherEnabled}
         selectedPlayerId={selectedPlayerId}
         enemyTypeId={effectiveEnemyTypeId}
         onReady={onReady}

@@ -60,80 +60,36 @@ const popupBtnStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-function RetroScanlinesPopup({
-  enabled,
-  uScan,
-  uWarp,
-  onEnabledChange,
-  onSettingsChange,
-  onClose,
+/** Gate popup: warns that FX settings are for good GPUs, then continues to FX popup. */
+function FxSettingsGatePopup({
+  onContinue,
+  onCancel,
   playClick,
 }: {
-  enabled: boolean;
-  uScan: number;
-  uWarp: number;
-  onEnabledChange: (v: boolean) => void;
-  onSettingsChange: (s: { uScan?: number; uWarp?: number }) => void;
-  onClose: () => void;
+  onContinue: () => void;
+  onCancel: () => void;
   playClick: () => void;
 }) {
-  const [scan, setScan] = useState(uScan);
-  const [warp, setWarp] = useState(uWarp);
-  useEffect(() => {
-    setScan(uScan);
-    setWarp(uWarp);
-  }, [uScan, uWarp]);
-  const handleDone = () => {
-    playClick();
-    onClose();
-    requestAnimationFrame(() => {
-      onSettingsChange({ uScan: scan, uWarp: warp });
-    });
-  };
   return (
     <div
       style={popupOverlayStyle}
-      onClick={(e) => e.target === e.currentTarget && (playClick(), onClose())}
+      onClick={(e) => e.target === e.currentTarget && (playClick(), onCancel())}
     >
-      <div style={popupFormStyle} onClick={(e) => e.stopPropagation()}>
+      <div style={{ ...popupFormStyle, maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ color: "#00ff88", fontSize: 16, fontWeight: "bold", marginBottom: 12 }}>
-          Retro scanlines
+          FX Settings
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={() => onEnabledChange(!enabled)}
-          />
-          <span style={{ color: "#fff" }}>Enable</span>
-        </label>
-        <label style={{ display: "block", color: "#ccc", fontSize: 12, marginTop: 8 }}>
-          Scanline intensity: {scan.toFixed(2)}
-        </label>
-        <input
-          type="range"
-          min={0}
-          max={2}
-          step={0.05}
-          value={scan}
-          onChange={(e) => setScan(Number(e.target.value))}
-          style={{ ...popupInputStyle, marginBottom: 4 }}
-        />
-        <label style={{ display: "block", color: "#ccc", fontSize: 12, marginTop: 4 }}>
-          Warp (curvature): {warp.toFixed(2)}
-        </label>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={warp}
-          onChange={(e) => setWarp(Number(e.target.value))}
-          style={{ ...popupInputStyle, marginBottom: 4 }}
-        />
+        <p style={{ color: "#ccc", fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+          These settings are for devices with good GPUs. Scanlines, motion blur, and dither
+          backgrounds may affect performance on some phones.
+        </p>
+        <p style={{ color: "#aaa", fontSize: 12, marginBottom: 16 }}>Continue to edit these settings?</p>
         <div style={popupButtonRowStyle}>
-          <button type="button" style={popupBtnStyle} onClick={handleDone}>
-            Done
+          <button type="button" style={popupBtnStyle} onClick={() => { playClick(); onCancel(); }}>
+            Cancel
+          </button>
+          <button type="button" style={popupBtnStyle} onClick={() => { playClick(); onContinue(); }}>
+            Continue
           </button>
         </div>
       </div>
@@ -141,107 +97,107 @@ function RetroScanlinesPopup({
   );
 }
 
-function MotionBlurPopup({
-  enabled,
-  settings,
-  onEnabledChange,
-  onSettingsChange,
+/** Combined FX popup: scanlines, motion blur, dither. */
+function FxSettingsPopup({
+  retroEnabled,
+  uScan,
+  uWarp,
+  motionEnabled,
+  motionSettings,
+  ditherEnabled,
+  onRetroChange,
+  onCRTSettingsChange,
+  onMotionChange,
+  onMotionSettingsChange,
+  onDitherChange,
   onClose,
   playClick,
 }: {
-  enabled: boolean;
-  settings: { strength: number; decaySpeed: number; rampSpeed: number; movementScale: number };
-  onEnabledChange: (v: boolean) => void;
-  onSettingsChange: (s: Partial<typeof settings>) => void;
+  retroEnabled: boolean;
+  uScan: number;
+  uWarp: number;
+  motionEnabled: boolean;
+  motionSettings: { strength: number; decaySpeed: number; rampSpeed: number; movementScale: number };
+  ditherEnabled: boolean;
+  onRetroChange: (v: boolean) => void;
+  onCRTSettingsChange: (s: { uScan?: number; uWarp?: number }) => void;
+  onMotionChange: (v: boolean) => void;
+  onMotionSettingsChange: (s: Partial<typeof motionSettings>) => void;
+  onDitherChange: (v: boolean) => void;
   onClose: () => void;
   playClick: () => void;
 }) {
-  const [strength, setStrength] = useState(settings.strength);
-  const [decaySpeed, setDecaySpeed] = useState(settings.decaySpeed);
-  const [rampSpeed, setRampSpeed] = useState(settings.rampSpeed);
-  const [movementScale, setMovementScale] = useState(settings.movementScale);
+  const [scan, setScan] = useState(uScan);
+  const [warp, setWarp] = useState(uWarp);
+  const [strength, setStrength] = useState(motionSettings.strength);
+  const [decaySpeed, setDecaySpeed] = useState(motionSettings.decaySpeed);
+  const [rampSpeed, setRampSpeed] = useState(motionSettings.rampSpeed);
+  const [movementScale, setMovementScale] = useState(motionSettings.movementScale);
   useEffect(() => {
-    setStrength(settings.strength);
-    setDecaySpeed(settings.decaySpeed);
-    setRampSpeed(settings.rampSpeed);
-    setMovementScale(settings.movementScale);
-  }, [settings.strength, settings.decaySpeed, settings.rampSpeed, settings.movementScale]);
+    setScan(uScan);
+    setWarp(uWarp);
+    setStrength(motionSettings.strength);
+    setDecaySpeed(motionSettings.decaySpeed);
+    setRampSpeed(motionSettings.rampSpeed);
+    setMovementScale(motionSettings.movementScale);
+  }, [uScan, uWarp, motionSettings.strength, motionSettings.decaySpeed, motionSettings.rampSpeed, motionSettings.movementScale]);
+
   const handleDone = () => {
     playClick();
     onClose();
     requestAnimationFrame(() => {
-      onSettingsChange({ strength, decaySpeed: decaySpeed, rampSpeed, movementScale });
+      onCRTSettingsChange({ uScan: scan, uWarp: warp });
+      onMotionSettingsChange({ strength, decaySpeed: decaySpeed, rampSpeed, movementScale });
     });
   };
+
   return (
     <div
       style={popupOverlayStyle}
       onClick={(e) => e.target === e.currentTarget && (playClick(), onClose())}
     >
-      <div style={popupFormStyle} onClick={(e) => e.stopPropagation()}>
-        <div style={{ color: "#00ff88", fontSize: 16, fontWeight: "bold", marginBottom: 12 }}>
-          Motion blur
+      <div style={{ ...popupFormStyle, maxWidth: 320, maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ color: "#00ff88", fontSize: 16, fontWeight: "bold", marginBottom: 14 }}>
+          FX Settings
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={() => onEnabledChange(!enabled)}
-          />
-          <span style={{ color: "#fff" }}>Enable</span>
-        </label>
-        <label style={{ display: "block", color: "#ccc", fontSize: 12, marginTop: 8 }}>
-          Strength: {Math.round(strength)}
-        </label>
-        <input
-          type="range"
-          min={1}
-          max={40}
-          step={1}
-          value={strength}
-          onChange={(e) => setStrength(Number(e.target.value))}
-          style={{ ...popupInputStyle, marginBottom: 4 }}
-        />
-        <label style={{ display: "block", color: "#ccc", fontSize: 12, marginTop: 4 }}>
-          Decay speed: {decaySpeed.toFixed(2)}
-        </label>
-        <input
-          type="range"
-          min={0.01}
-          max={1}
-          step={0.01}
-          value={decaySpeed}
-          onChange={(e) => setDecaySpeed(Number(e.target.value))}
-          style={{ ...popupInputStyle, marginBottom: 4 }}
-        />
-        <label style={{ display: "block", color: "#ccc", fontSize: 12, marginTop: 4 }}>
-          Ramp speed: {rampSpeed.toFixed(2)}
-        </label>
-        <input
-          type="range"
-          min={0.01}
-          max={1}
-          step={0.01}
-          value={rampSpeed}
-          onChange={(e) => setRampSpeed(Number(e.target.value))}
-          style={{ ...popupInputStyle, marginBottom: 4 }}
-        />
-        <label style={{ display: "block", color: "#ccc", fontSize: 12, marginTop: 4 }}>
-          Movement scale: {Math.round(movementScale)}
-        </label>
-        <input
-          type="range"
-          min={1}
-          max={30}
-          step={1}
-          value={movementScale}
-          onChange={(e) => setMovementScale(Number(e.target.value))}
-          style={{ ...popupInputStyle, marginBottom: 4 }}
-        />
-        <div style={popupButtonRowStyle}>
-          <button type="button" style={popupBtnStyle} onClick={handleDone}>
-            Done
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <input type="checkbox" checked={retroEnabled} onChange={() => onRetroChange(!retroEnabled)} />
+            <span style={{ color: "#fff" }}>Retro scanlines</span>
+          </label>
+          <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Intensity: {scan.toFixed(2)}</label>
+          <input type="range" min={0} max={2} step={0.05} value={scan} onChange={(e) => setScan(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 2 }} />
+          <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Warp: {warp.toFixed(2)}</label>
+          <input type="range" min={0} max={1} step={0.05} value={warp} onChange={(e) => setWarp(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 0 }} />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <input type="checkbox" checked={motionEnabled} onChange={() => onMotionChange(!motionEnabled)} />
+            <span style={{ color: "#fff" }}>Motion blur</span>
+          </label>
+          <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Strength: {Math.round(strength)}</label>
+          <input type="range" min={1} max={40} step={1} value={strength} onChange={(e) => setStrength(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 2 }} />
+          <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Decay: {decaySpeed.toFixed(2)}</label>
+          <input type="range" min={0.01} max={1} step={0.01} value={decaySpeed} onChange={(e) => setDecaySpeed(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 0 }} />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" checked={ditherEnabled} onChange={() => onDitherChange(!ditherEnabled)} />
+            <span style={{ color: "#fff" }}>Dither background</span>
+          </label>
+        </div>
+
+        <p style={{ color: "#888", fontSize: 11, marginBottom: 12 }}>
+          Changes apply immediately. If the game feels slow, turn effects off or restart.
+        </p>
+        <div style={{ ...popupButtonRowStyle, flexWrap: "wrap" }}>
+          <button type="button" style={popupBtnStyle} onClick={() => { window.location.reload(); }}>
+            Restart game
           </button>
+          <button type="button" style={popupBtnStyle} onClick={handleDone}>Done</button>
         </div>
       </div>
     </div>
@@ -258,22 +214,25 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
   const {
     retroScanlinesEnabled,
     motionBlurEnabled,
+    ditherEnabled,
     crtSettings,
     motionBlurSettings,
     setRetroScanlinesEnabled,
     setMotionBlurEnabled,
+    setDitherEnabled,
     setCRTSettings,
     setMotionBlurSettings,
   } = useVisualSettings();
   const [soundOn, setSoundOn] = useState(getSoundEnabled);
   const [hoverButton, setHoverButton] = useState<
-    "sound" | "retro" | "motion" | "executive" | "back" | null
+    "sound" | "fx" | "executive" | "back" | null
   >(null);
   const [showPasskeyPopup, setShowPasskeyPopup] = useState(false);
   const [passkeyInput, setPasskeyInput] = useState("");
   const [passkeyError, setPasskeyError] = useState("");
   const passkeyInputRef = useRef<HTMLInputElement>(null);
-  const [settingsPopup, setSettingsPopup] = useState<"retro" | "motion" | null>(null);
+  const [fxGateOpen, setFxGateOpen] = useState(false);
+  const [fxPopupOpen, setFxPopupOpen] = useState(false);
 
   useEffect(() => {
     setSoundEnabled(soundOn);
@@ -422,7 +381,7 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
   return (
     <>
     <Stage width={width} height={height}>
-      <StartScreenBackground width={width} height={height} />
+      <StartScreenBackground width={width} height={height} ditherEnabled={ditherEnabled} />
 
       <Container x={width / 2} y={height / 4}>
         <Text text="OPTIONS" anchor={0.5} style={titleStyle} />
@@ -449,7 +408,7 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
         />
       </Container>
 
-      {/* Retro scanlines - click opens settings popup */}
+      {/* FX Settings - gate popup then scanlines / motion blur / dither */}
       <Container
         x={width / 2}
         y={height / 2 - 50}
@@ -457,42 +416,18 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
         cursor="pointer"
         pointerdown={() => {
           playClick();
-          setSettingsPopup("retro");
+          setFxGateOpen(true);
         }}
-        pointerover={() => setHoverButton("retro")}
-        pointerout={() => setHoverButton((prev) => (prev === "retro" ? null : prev))}
+        pointerover={() => setHoverButton("fx")}
+        pointerout={() => setHoverButton((prev) => (prev === "fx" ? null : prev))}
       >
         <Text
-          text={`Retro scanlines: ${retroScanlinesEnabled ? "On" : "Off"}`}
+          text="FX SETTINGS"
           anchor={0.5}
           style={labelStyle}
           scale={{
-            x: hoverButton === "retro" ? 1.05 : 1,
-            y: hoverButton === "retro" ? 1.05 : 1,
-          }}
-        />
-      </Container>
-
-      {/* Motion blur - click opens settings popup */}
-      <Container
-        x={width / 2}
-        y={height / 2}
-        eventMode="static"
-        cursor="pointer"
-        pointerdown={() => {
-          playClick();
-          setSettingsPopup("motion");
-        }}
-        pointerover={() => setHoverButton("motion")}
-        pointerout={() => setHoverButton((prev) => (prev === "motion" ? null : prev))}
-      >
-        <Text
-          text={`Motion blur: ${motionBlurEnabled ? "On" : "Off"}`}
-          anchor={0.5}
-          style={labelStyle}
-          scale={{
-            x: hoverButton === "motion" ? 1.05 : 1,
-            y: hoverButton === "motion" ? 1.05 : 1,
+            x: hoverButton === "fx" ? 1.05 : 1,
+            y: hoverButton === "fx" ? 1.05 : 1,
           }}
         />
       </Container>
@@ -551,27 +486,28 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
       )}
     </Stage>
 
-      {/* Retro scanlines settings popup */}
-      {settingsPopup === "retro" && (
-        <RetroScanlinesPopup
-          enabled={retroScanlinesEnabled}
-          uScan={crtSettings.uScan}
-          uWarp={crtSettings.uWarp}
-          onEnabledChange={setRetroScanlinesEnabled}
-          onSettingsChange={setCRTSettings}
-          onClose={() => setSettingsPopup(null)}
+      {fxGateOpen && (
+        <FxSettingsGatePopup
+          onContinue={() => { setFxGateOpen(false); setFxPopupOpen(true); }}
+          onCancel={() => setFxGateOpen(false)}
           playClick={playClick}
         />
       )}
 
-      {/* Motion blur settings popup */}
-      {settingsPopup === "motion" && (
-        <MotionBlurPopup
-          enabled={motionBlurEnabled}
-          settings={motionBlurSettings}
-          onEnabledChange={setMotionBlurEnabled}
-          onSettingsChange={setMotionBlurSettings}
-          onClose={() => setSettingsPopup(null)}
+      {fxPopupOpen && (
+        <FxSettingsPopup
+          retroEnabled={retroScanlinesEnabled}
+          uScan={crtSettings.uScan}
+          uWarp={crtSettings.uWarp}
+          motionEnabled={motionBlurEnabled}
+          motionSettings={motionBlurSettings}
+          ditherEnabled={ditherEnabled}
+          onRetroChange={setRetroScanlinesEnabled}
+          onCRTSettingsChange={setCRTSettings}
+          onMotionChange={setMotionBlurEnabled}
+          onMotionSettingsChange={setMotionBlurSettings}
+          onDitherChange={setDitherEnabled}
+          onClose={() => setFxPopupOpen(false)}
           playClick={playClick}
         />
       )}

@@ -4,6 +4,40 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  /* Same dark blue so any gap between Stage and back bar isn’t black */
+  background-color: #04003d;
+}
+
+.executive-orders-back-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 0 12px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  /* Same dark blue as wrapper so no visible bar between options and button */
+  background-color: #04003d;
+}
+
+.executive-orders-back-button {
+  pointer-events: auto;
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 2px solid #000000;
+  background: transparent;
+  color: #ffffff;
+  font-family: "Neopixel", sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 0 4px #000000;
+  cursor: pointer;
+}
+
+.executive-orders-back-button:hover {
+  color: #00ff88;
+  border-color: #00ff88;
 }
 
 .executive-orders-overlay {

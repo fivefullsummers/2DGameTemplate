@@ -294,6 +294,7 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     motionBlurEnabled,
     motionBlurSettings,
     retroScanlinesEnabled,
+    ditherEnabled,
     crtSettings,
   } = useVisualSettings();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
@@ -795,7 +796,7 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   const mobileControlsHeight = isMobile() ? 100 : 0;
   const stageHeight = height - mobileControlsHeight;
 
-  // Color smear: per-entity so player and enemies smear in their own movement direction.
+  // Color smear: created only when motion blur is enabled (lazy, no preload). Disposed when disabled or unmount.
   const colorSmearFilterRef = useRef<PIXI.Filter | null>(null);
   const prevPlayerPosRef = useRef<IPosition>({ x: 0, y: 0 });
   const movementSmoothedRef = useRef(0);
@@ -815,10 +816,21 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   );
 
   const colorSmearFilter = useMemo(() => {
+    if (!motionBlurEnabled) return null;
     const filter = createColorSmearFilter(width, stageHeight, colorSmearOptions);
     colorSmearFilterRef.current = filter;
     return filter;
-  }, [width, stageHeight, colorSmearOptions]);
+  }, [motionBlurEnabled, width, stageHeight, colorSmearOptions]);
+
+  // Dispose motion blur filter when disabled or on unmount
+  useEffect(() => {
+    return () => {
+      if (colorSmearFilterRef.current) {
+        colorSmearFilterRef.current.destroy();
+        colorSmearFilterRef.current = null;
+      }
+    };
+  }, [motionBlurEnabled]);
 
   return (
     <div
@@ -857,8 +869,8 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           height={stageHeight}
           onPointerDown={handleStageClick}
         >
-          {/* Simple twinkling stars background */}
-          <GameSpaceBackground width={width} height={height} />
+          {/* Background: solid dark blue when dither off, dither gradient when on */}
+          <GameSpaceBackground width={width} height={stageHeight} ditherEnabled={ditherEnabled} />
           <Container
             scale={scale}
             x={horizontalOffset}

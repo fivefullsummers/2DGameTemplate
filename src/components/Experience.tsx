@@ -752,7 +752,18 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
       return;
     }
 
-    // Default behavior: lose a life
+    // Extra Life (Executive Order):
+    // - When OFF (default): 1 hit = immediate GAME OVER.
+    // - When ON: hits consume a life as usual and extra lives can be earned via score.
+    if (!gameState.getExtraLifeEnabled()) {
+      gameState.triggerGameOver();
+      if (playerRef.current) {
+        playerRef.current.triggerDeath();
+      }
+      return;
+    }
+
+    // Default behavior with Extra Life enabled: lose a life
     gameState.loseLife();
     // Trigger player death animation
     if (playerRef.current) {

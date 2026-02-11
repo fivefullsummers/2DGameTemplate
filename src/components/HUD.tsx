@@ -100,11 +100,13 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
           <div className="hud-value score-value">{formatScore(state.score)}</div>
         </div>
 
-        {/* High Score Section */}
-        <div className="hud-section hud-high-score">
-          <div className="hud-label">HI-SCORE</div>
-          <div className="hud-value high-score-value">{formatScore(state.highScore)}</div>
-        </div>
+        {/* High Score Section (can be hidden via Executive Orders → HUD stats) */}
+        {state.hudShowHighScore && (
+          <div className="hud-section hud-high-score">
+            <div className="hud-label">HI-SCORE</div>
+            <div className="hud-value high-score-value">{formatScore(state.highScore)}</div>
+          </div>
+        )}
 
         {/* Wave Section */}
         <div className="hud-section hud-wave">
@@ -122,24 +124,28 @@ const HUD = ({ showDebugInfo = false }: HUDProps) => {
           </div>
         )}
 
-        {/* Lives Section */}
-        <div className="hud-section hud-lives">
-          <div className="hud-label">LIVES</div>
-          <div className="hud-lives-display">
-            {Array.from({ length: state.lives }).map((_, index) => (
-              <div key={index} className="life-icon">▲</div>
-            ))}
-            {state.lives === 0 && <div className="game-over-indicator">GAME OVER</div>}
+        {/* Lives Section (can be hidden via Executive Orders → HUD stats) */}
+        {state.hudShowLives && (
+          <div className="hud-section hud-lives">
+            <div className="hud-label">LIVES</div>
+            <div className="hud-lives-display">
+              {Array.from({ length: state.lives }).map((_, index) => (
+                <div key={index} className="life-icon">▲</div>
+              ))}
+              {state.lives === 0 && <div className="game-over-indicator">GAME OVER</div>}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Current weapon (bullet name) */}
-        <div className="hud-section hud-weapon">
-          <div className="hud-label">WEAPON</div>
-          <div className="hud-value hud-weapon-name">
-            {BULLET_TYPES[state.selectedBulletType]?.name ?? state.selectedBulletType ?? 'Basic Bullet'}
+        {/* Current weapon (bullet name) – can be hidden via HUD stats Executive Order */}
+        {state.hudShowWeapon && (
+          <div className="hud-section hud-weapon">
+            <div className="hud-label">WEAPON</div>
+            <div className="hud-value hud-weapon-name">
+              {BULLET_TYPES[state.selectedBulletType]?.name ?? state.selectedBulletType ?? 'Basic Bullet'}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Executive Order: King's Mode indicator */}
         {state.kingsModeEnabled && (

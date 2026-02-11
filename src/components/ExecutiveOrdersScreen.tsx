@@ -24,7 +24,16 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
       : logicalHeight;
   const { retroScanlinesEnabled, ditherEnabled, crtSettings } = useVisualSettings();
   const [hoverButton, setHoverButton] = useState<
-    "back" | "kings" | "bigred" | "tax" | "timer" | "diff-i" | "diff-o" | "diff-u" | null
+    | "back"
+    | "kings"
+    | "bigred"
+    | "tax"
+    | "timer"
+    | "hud"
+    | "diff-i"
+    | "diff-o"
+    | "diff-u"
+    | null
   >(null);
   const [kingsMode, setKingsMode] = useState(gameState.getKingsMode());
   const [bigRedButtonEnabled, setBigRedButtonEnabled] = useState(gameState.getBigRedButtonEnabled());
@@ -32,6 +41,11 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
     gameState.getTaxReimbursementEnabled()
   );
   const [timerEnabled, setTimerEnabled] = useState(gameState.getTimerEnabled());
+  const [hudShowHighScore, setHudShowHighScore] = useState(gameState.getHudShowHighScore());
+  const [hudShowLives, setHudShowLives] = useState(gameState.getHudShowLives());
+  const [hudShowWeapon, setHudShowWeapon] = useState(gameState.getHudShowWeapon());
+  const [extraLifeEnabled, setExtraLifeEnabled] = useState(gameState.getExtraLifeEnabled());
+  const [showHudStatsPopup, setShowHudStatsPopup] = useState(false);
   const [difficulty, setDifficulty] = useState<GameDifficulty>(gameState.getDifficulty());
 
   useEffect(() => {
@@ -41,6 +55,10 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
       setTaxReimbursementEnabled(state.taxReimbursementEnabled);
       setDifficulty(state.difficulty);
       setTimerEnabled(state.timerEnabled);
+      setHudShowHighScore(state.hudShowHighScore);
+      setHudShowLives(state.hudShowLives);
+      setHudShowWeapon(state.hudShowWeapon);
+      setExtraLifeEnabled(state.extraLifeEnabled);
     });
     return unsub;
   }, []);
@@ -134,6 +152,21 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
   const handleTimerToggle = () => {
     playClick();
     gameState.setTimerEnabled(!gameState.getTimerEnabled());
+  };
+
+  const handleExtraLifeToggle = () => {
+    playClick();
+    gameState.setExtraLifeEnabled(!gameState.getExtraLifeEnabled());
+  };
+
+  const handleOpenHudStats = () => {
+    playClick();
+    setShowHudStatsPopup(true);
+  };
+
+  const handleCloseHudStats = () => {
+    playClick();
+    setShowHudStatsPopup(false);
   };
 
   const handleDifficultySelect = (level: GameDifficulty) => {
@@ -289,8 +322,76 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
         />
       </Container>
 
+      {/* HUD Stats: toggle visibility of specific HUD sections via popup */}
+      <Container
+        x={width / 2}
+        y={firstRowY + rowSpacing * 4}
+        eventMode="static"
+        cursor="pointer"
+        pointerdown={handleOpenHudStats}
+        pointerover={() => setHoverButton("hud")}
+        pointerout={() => setHoverButton(null)}
+      >
+        <Text
+          text="HUD Stats"
+          anchor={0.5}
+          style={optionTitleStyle}
+          scale={{
+            x: hoverButton === "hud" ? 1.05 : 1,
+            y: hoverButton === "hud" ? 1.05 : 1,
+          }}
+        />
+        <Text
+          text="Show/Hide HI-SCORE, LIVES, WEAPON on HUD"
+          anchor={0.5}
+          style={optionDescStyle}
+          y={20}
+        />
+        <Text
+          text={`HI:${hudShowHighScore ? "ON" : "OFF"}  LV:${hudShowLives ? "ON" : "OFF"}  WP:${hudShowWeapon ? "ON" : "OFF"}`}
+          anchor={0.5}
+          style={optionDescStyle}
+          y={38}
+          tint={0x00ff88}
+        />
+      </Container>
+
+      {/* Extra Life: enable multi-life + score-based extra lives, or 1-hit game over */}
+      <Container
+        x={width / 2}
+        y={firstRowY + rowSpacing * 5}
+        eventMode="static"
+        cursor="pointer"
+        pointerdown={handleExtraLifeToggle}
+        pointerover={() => setHoverButton("diff-i")}
+        pointerout={() => setHoverButton(null)}
+      >
+        <Text
+          text="Extra Life"
+          anchor={0.5}
+          style={optionTitleStyle}
+          scale={{
+            x: hoverButton === "diff-i" ? 1.05 : 1,
+            y: hoverButton === "diff-i" ? 1.05 : 1,
+          }}
+        />
+        <Text
+          text="OFF: 1 hit = GAME OVER. ON: lives + score-based extra lives."
+          anchor={0.5}
+          style={optionDescStyle}
+          y={20}
+        />
+        <Text
+          text={extraLifeEnabled ? "[ ON ]" : "[ OFF ]"}
+          anchor={0.5}
+          style={optionDescStyle}
+          y={38}
+          tint={extraLifeEnabled ? 0x00ff88 : 0x888888}
+        />
+      </Container>
+
       {/* Difficulty: enemy shooting aggression — I = easy, O = medium, U = hard */}
-      <Container x={width / 2} y={firstRowY + rowSpacing * 4}>
+      <Container x={width / 2} y={firstRowY + rowSpacing * 6}>
         <Text text="Difficulty" anchor={0.5} style={optionTitleStyle} />
         <Text text="Enemy shooting aggression" anchor={0.5} style={optionDescStyle} y={18} />
         <Container x={-52} y={38}>
@@ -364,6 +465,66 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
         />
       )}
       </Stage>
+
+      {/* HUD Stats popup: HTML overlay with toggles for HUD sections */}
+      {showHudStatsPopup && (
+        <div className="executive-orders-overlay">
+          <div
+            className="hud-stats-popup-backdrop"
+            onClick={handleCloseHudStats}
+          >
+            <div
+              className="hud-stats-popup"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="hud-stats-title">HUD STATS</div>
+              <div className="hud-stats-row">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={hudShowHighScore}
+                    onChange={() =>
+                      gameState.setHudShowHighScore(!gameState.getHudShowHighScore())
+                    }
+                  />
+                  <span>Show HI-SCORE</span>
+                </label>
+              </div>
+              <div className="hud-stats-row">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={hudShowLives}
+                    onChange={() =>
+                      gameState.setHudShowLives(!gameState.getHudShowLives())
+                    }
+                  />
+                  <span>Show LIVES counter</span>
+                </label>
+              </div>
+              <div className="hud-stats-row">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={hudShowWeapon}
+                    onChange={() =>
+                      gameState.setHudShowWeapon(!gameState.getHudShowWeapon())
+                    }
+                  />
+                  <span>Show WEAPON label</span>
+                </label>
+              </div>
+              <button
+                type="button"
+                className="hud-stats-close-button"
+                onClick={handleCloseHudStats}
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fixed bottom back bar so the BACK button always aligns with the screen bottom */}
       <div className="executive-orders-back-bar">

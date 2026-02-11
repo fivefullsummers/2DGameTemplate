@@ -857,9 +857,8 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
         justifyContent: 'flex-start',
         alignItems: 'center',
         overflow: 'hidden',
-        // Make any tiny gaps from screen shake / layout match the game blue,
-        // so you never see pure black between gameplay and the controls bar.
-        backgroundColor: 'rgb(4, 0, 61)',
+        // Match twinkle shader / mobile controls bar so gaps blend (rgb(3, 3, 15)).
+        backgroundColor: 'rgb(3, 3, 15)',
       }}
     >
       <HUD showDebugInfo={false} />

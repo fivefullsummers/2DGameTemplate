@@ -2,6 +2,7 @@ import { Container, Stage, Text } from "@pixi/react";
 import { useState, useCallback, useMemo } from "react";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import TiledDitherBackground from "./TiledDitherBackground";
 import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
@@ -106,12 +107,17 @@ const StartScreen = ({ onStartGame, onOpenOptions }: StartScreenProps) => {
   return (
     <>
       <Stage width={width} height={height}>
-        {/* Background: solid dark blue when dither off, dither gradient when on */}
-        <StartScreenBackground
-          width={width}
-          height={height}
-          ditherEnabled={ditherEnabled}
-        />
+        {/* Backgrounds: cheap image-based dither by default, heavy shader when enabled */}
+        {!ditherEnabled && (
+          <TiledDitherBackground width={width} height={height} />
+        )}
+        {ditherEnabled && (
+          <StartScreenBackground
+            width={width}
+            height={height}
+            ditherEnabled={true}
+          />
+        )}
 
       {/* Title */}
       <Container x={width / 2} y={height / 3}>

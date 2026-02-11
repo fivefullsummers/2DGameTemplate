@@ -2,6 +2,7 @@ import { Container, Stage, Text } from "@pixi/react";
 import { useState, useMemo, useEffect } from "react";
 import useDimensions from "../hooks/useDimensions";
 import StartScreenBackground from "./StartScreenBackground";
+import TiledDitherBackground from "./TiledDitherBackground";
 import CRTOverlay from "./CRTOverlay";
 import { TextStyle } from "pixi.js";
 import { sound } from "@pixi/sound";
@@ -151,7 +152,12 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
   return (
     <div className="executive-orders-wrap">
       <Stage width={width} height={height}>
-        <StartScreenBackground width={width} height={height} ditherEnabled={ditherEnabled} />
+        {!ditherEnabled && (
+          <TiledDitherBackground width={width} height={height} />
+        )}
+        {ditherEnabled && (
+          <StartScreenBackground width={width} height={height} ditherEnabled={true} />
+        )}
 
         <Container x={width / 2} y={titleY}>
           <Text text="EXECUTIVE ORDERS" anchor={0.5} style={titleStyle} />

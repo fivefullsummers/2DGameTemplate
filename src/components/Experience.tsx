@@ -38,6 +38,7 @@ import {
 } from "../consts/bullet-config";
 import { PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
 import GameSpaceBackground from "./GameSpaceBackground";
+import TiledDitherBackground from "./TiledDitherBackground";
 import CRTOverlay from "./CRTOverlay";
 import MobileControlsBar from "./MobileControlsBar";
 import {
@@ -847,9 +848,9 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
         justifyContent: 'flex-start',
         alignItems: 'center',
         overflow: 'hidden',
-        // Match the midnight black game background so any residual gaps
-        // (e.g., due to browser UI chrome) blend seamlessly.
-        backgroundColor: '#03030f',
+        // Make any tiny gaps from screen shake / layout match the game blue,
+        // so you never see pure black between gameplay and the controls bar.
+        backgroundColor: 'rgb(4, 0, 61)',
       }}
     >
       <HUD showDebugInfo={false} />
@@ -869,8 +870,17 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           height={stageHeight}
           onPointerDown={handleStageClick}
         >
-          {/* Background: solid dark blue when dither off, dither gradient when on */}
-          <GameSpaceBackground width={width} height={stageHeight} ditherEnabled={ditherEnabled} />
+          {/* Cheap image-based dither by default; heavy shader when enabled */}
+          {!ditherEnabled && (
+            <TiledDitherBackground width={width} height={stageHeight} />
+          )}
+          {ditherEnabled && (
+            <GameSpaceBackground
+              width={width}
+              height={stageHeight}
+              ditherEnabled={true}
+            />
+          )}
           <Container
             scale={scale}
             x={horizontalOffset}

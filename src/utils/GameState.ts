@@ -109,13 +109,14 @@ export class GameState {
   private kingsModeEnabled: boolean = false;
   private bigRedButtonEnabled: boolean = false;
   private difficulty: GameDifficulty = 'medium';
-  private taxReimbursementEnabled: boolean = true;
-  // HUD stats are OFF by default; player can opt-in via Executive Orders.
+  // Tax Reimbursement OFF by default; bullets deal damage unless explicitly enabled.
+  private taxReimbursementEnabled: boolean = false;
+  // HUD stats: by default only LIVES is shown; others can be enabled via Executive Orders.
   private hudShowHighScore: boolean = false;
-  private hudShowLives: boolean = false;
+  private hudShowLives: boolean = true;
   private hudShowWeapon: boolean = false;
-  // Extra Life is OFF by default; hits cause immediate game over unless enabled.
-  private extraLifeEnabled: boolean = false;
+  // Extra Life is ON by default; hits consume lives and extra lives can be earned.
+  private extraLifeEnabled: boolean = true;
 
   // Countdown timer (per-level, used for optional timer-based Game Over).
   private timerSecondsRemaining: number = LEVEL_TIMER_DEFAULT_SECONDS;

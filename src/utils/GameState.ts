@@ -110,9 +110,11 @@ export class GameState {
   private bigRedButtonEnabled: boolean = false;
   private difficulty: GameDifficulty = 'medium';
   private taxReimbursementEnabled: boolean = true;
-  private hudShowHighScore: boolean = true;
-  private hudShowLives: boolean = true;
-  private hudShowWeapon: boolean = true;
+  // HUD stats are OFF by default; player can opt-in via Executive Orders.
+  private hudShowHighScore: boolean = false;
+  private hudShowLives: boolean = false;
+  private hudShowWeapon: boolean = false;
+  // Extra Life is OFF by default; hits cause immediate game over unless enabled.
   private extraLifeEnabled: boolean = false;
 
   // Countdown timer (per-level, used for optional timer-based Game Over).

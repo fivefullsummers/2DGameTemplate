@@ -4,15 +4,15 @@ import { Container } from "@pixi/react";
 import cheapVertex from "../shaders/cheapBackground/vertex.glsl?raw";
 import cheapFragment from "../shaders/cheapBackground/fragment.glsl?raw";
 import backgroundPattern from "../assets/misc/background.png";
+import { BACKGROUND_TILE_SIZE } from "../consts/background-tile";
 
 interface CheapBackgroundProps {
   width: number;
   height: number;
 }
 
-// Original pattern dimensions
-const PATTERN_WIDTH = 504;
-const PATTERN_HEIGHT = 705;
+const PATTERN_WIDTH = BACKGROUND_TILE_SIZE;
+const PATTERN_HEIGHT = BACKGROUND_TILE_SIZE;
 
 const CheapBackground = ({ width, height }: CheapBackgroundProps) => {
   const containerRef = useRef<PIXI.Container | null>(null);

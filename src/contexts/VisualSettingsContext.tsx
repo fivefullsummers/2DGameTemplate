@@ -27,6 +27,8 @@ interface VisualSettingsContextType {
   ditherEnabled: boolean;
   crtSettings: CRTSettings;
   motionBlurSettings: MotionBlurSettings;
+  /** If false, device failed the pre-game GPU/shader check; use fallback background and avoid heavy shader effects */
+  shadersSupported: boolean;
   setRetroScanlinesEnabled: (enabled: boolean) => void;
   setMotionBlurEnabled: (enabled: boolean) => void;
   setDitherEnabled: (enabled: boolean) => void;
@@ -36,12 +38,20 @@ interface VisualSettingsContextType {
 
 const VisualSettingsContext = createContext<VisualSettingsContextType | null>(null);
 
-export const VisualSettingsProvider = ({ children }: { children: ReactNode }) => {
+interface VisualSettingsProviderProps {
+  children: ReactNode;
+  /** From useAssetLoader; used to know if shader effects are safe before entering the game */
+  gpuCapability?: { shadersSupported: boolean } | null;
+}
+
+export const VisualSettingsProvider = ({ children, gpuCapability }: VisualSettingsProviderProps) => {
   const [retroScanlinesEnabled, setRetroState] = useState(getRetroScanlinesEnabled);
   const [motionBlurEnabled, setMotionBlurState] = useState(getMotionBlurEnabled);
   const [ditherEnabled, setDitherState] = useState(getDitherEnabled);
   const [crtSettings, setCRTState] = useState(getCRTSettings);
   const [motionBlurSettings, setMotionBlurSettingsState] = useState(getMotionBlurSettings);
+
+  const shadersSupported = gpuCapability?.shadersSupported ?? true;
 
   useEffect(() => {
     setRetroState(getRetroScanlinesEnabled());
@@ -82,6 +92,7 @@ export const VisualSettingsProvider = ({ children }: { children: ReactNode }) =>
     ditherEnabled,
     crtSettings,
     motionBlurSettings,
+    shadersSupported,
     setRetroScanlinesEnabled,
     setMotionBlurEnabled,
     setDitherEnabled,

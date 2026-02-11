@@ -98,8 +98,20 @@ function FxSettingsGatePopup({
   );
 }
 
-/** Combined FX popup: scanlines, motion blur, dither. */
+const shaderUnavailableNoteStyle: React.CSSProperties = {
+  color: "#ffaa00",
+  fontSize: 12,
+  lineHeight: 1.4,
+  marginBottom: 14,
+  padding: "8px 10px",
+  background: "rgba(255,170,0,0.12)",
+  borderRadius: 6,
+  border: "1px solid rgba(255,170,0,0.4)",
+};
+
+/** Combined FX popup: scanlines, motion blur, dither. When shadersSupported is false, scanlines and motion blur are disabled. */
 function FxSettingsPopup({
+  shadersSupported,
   retroEnabled,
   uScan,
   uWarp,
@@ -114,6 +126,7 @@ function FxSettingsPopup({
   onClose,
   playClick,
 }: {
+  shadersSupported: boolean;
   retroEnabled: boolean;
   uScan: number;
   uWarp: number;
@@ -162,26 +175,32 @@ function FxSettingsPopup({
           FX Settings
         </div>
 
-        <div style={{ marginBottom: 14 }}>
+        {!shadersSupported && (
+          <p style={shaderUnavailableNoteStyle}>
+            Shader effects (scanlines, motion blur) are unavailable on this device. You can still use the dither background below.
+          </p>
+        )}
+
+        <div style={{ marginBottom: 14, opacity: shadersSupported ? 1 : 0.5, pointerEvents: shadersSupported ? "auto" : "none" }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <input type="checkbox" checked={retroEnabled} onChange={() => onRetroChange(!retroEnabled)} />
+            <input type="checkbox" checked={retroEnabled} onChange={() => onRetroChange(!retroEnabled)} disabled={!shadersSupported} />
             <span style={{ color: "#fff" }}>Retro scanlines</span>
           </label>
           <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Intensity: {scan.toFixed(2)}</label>
-          <input type="range" min={0} max={2} step={0.05} value={scan} onChange={(e) => setScan(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 2 }} />
+          <input type="range" min={0} max={2} step={0.05} value={scan} onChange={(e) => setScan(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 2 }} disabled={!shadersSupported} />
           <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Warp: {warp.toFixed(2)}</label>
-          <input type="range" min={0} max={1} step={0.05} value={warp} onChange={(e) => setWarp(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 0 }} />
+          <input type="range" min={0} max={1} step={0.05} value={warp} onChange={(e) => setWarp(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 0 }} disabled={!shadersSupported} />
         </div>
 
-        <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 14, opacity: shadersSupported ? 1 : 0.5, pointerEvents: shadersSupported ? "auto" : "none" }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <input type="checkbox" checked={motionEnabled} onChange={() => onMotionChange(!motionEnabled)} />
+            <input type="checkbox" checked={motionEnabled} onChange={() => onMotionChange(!motionEnabled)} disabled={!shadersSupported} />
             <span style={{ color: "#fff" }}>Motion blur</span>
           </label>
           <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Strength: {Math.round(strength)}</label>
-          <input type="range" min={1} max={40} step={1} value={strength} onChange={(e) => setStrength(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 2 }} />
+          <input type="range" min={1} max={40} step={1} value={strength} onChange={(e) => setStrength(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 2 }} disabled={!shadersSupported} />
           <label style={{ display: "block", color: "#ccc", fontSize: 11 }}>Decay: {decaySpeed.toFixed(2)}</label>
-          <input type="range" min={0.01} max={1} step={0.01} value={decaySpeed} onChange={(e) => setDecaySpeed(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 0 }} />
+          <input type="range" min={0.01} max={1} step={0.01} value={decaySpeed} onChange={(e) => setDecaySpeed(Number(e.target.value))} style={{ ...popupInputStyle, marginBottom: 0 }} disabled={!shadersSupported} />
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -218,6 +237,7 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
     ditherEnabled,
     crtSettings,
     motionBlurSettings,
+    shadersSupported,
     setRetroScanlinesEnabled,
     setMotionBlurEnabled,
     setDitherEnabled,
@@ -414,7 +434,7 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
         />
       </Container>
 
-      {/* FX Settings - gate popup then scanlines / motion blur / dither */}
+      {/* FX Settings: gate popup only when shaders supported; otherwise open FX popup directly */}
       <Container
         x={width / 2}
         y={height / 2 - 50}
@@ -422,7 +442,11 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
         cursor="pointer"
         pointerdown={() => {
           playClick();
-          setFxGateOpen(true);
+          if (shadersSupported) {
+            setFxGateOpen(true);
+          } else {
+            setFxPopupOpen(true);
+          }
         }}
         pointerover={() => setHoverButton("fx")}
         pointerout={() => setHoverButton((prev) => (prev === "fx" ? null : prev))}
@@ -482,7 +506,7 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
         />
       </Container>
 
-      {retroScanlinesEnabled && (
+      {shadersSupported && retroScanlinesEnabled && (
         <CRTOverlay
           width={width}
           height={height}
@@ -502,6 +526,7 @@ const OptionsScreen = ({ onBack, onOpenExecutiveOrders }: OptionsScreenProps) =>
 
       {fxPopupOpen && (
         <FxSettingsPopup
+          shadersSupported={shadersSupported}
           retroEnabled={retroScanlinesEnabled}
           uScan={crtSettings.uScan}
           uWarp={crtSettings.uWarp}

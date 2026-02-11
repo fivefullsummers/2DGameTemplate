@@ -37,7 +37,8 @@ import {
   POWERUP_SPRITE_FRAME_OFFSET,
 } from "../consts/bullet-config";
 import { PLAYER_COLLISION_RADIUS, PLAYER_SCALE, PLAYER_START_Y } from "../consts/tuning-config";
-import SpaceGameBackground from "./SpaceGameBackground";
+import { BACKGROUND_TILE_SIZE } from "../consts/background-tile";
+import backgroundPattern from "../assets/misc/background.png";
 import CRTOverlay from "./CRTOverlay";
 import MobileControlsBar from "./MobileControlsBar";
 import {
@@ -295,6 +296,7 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
     motionBlurSettings,
     retroScanlinesEnabled,
     crtSettings,
+    shadersSupported,
   } = useVisualSettings();
   const onClickMove = useRef<(target: IPosition)=>void>(null);
   const bulletManagerRef = useRef<BulletManagerRef>(null);
@@ -826,11 +828,11 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
   );
 
   const colorSmearFilter = useMemo(() => {
-    if (!motionBlurEnabled) return null;
+    if (!motionBlurEnabled || !shadersSupported) return null;
     const filter = createColorSmearFilter(width, stageHeight, colorSmearOptions);
     colorSmearFilterRef.current = filter;
     return filter;
-  }, [motionBlurEnabled, width, stageHeight, colorSmearOptions]);
+  }, [motionBlurEnabled, shadersSupported, width, stageHeight, colorSmearOptions]);
 
   // Dispose motion blur filter when disabled or on unmount
   useEffect(() => {
@@ -861,25 +863,40 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
         backgroundColor: 'rgb(3, 3, 15)',
       }}
     >
-      <HUD showDebugInfo={false} />
-      <CollisionInfo
-        isVisible={showCollisionDebug}
-        playerRadius={PLAYER_COLLISION_RADIUS}
-        enemyRadius={enemyBulletHitRadius}
-        bulletVsBulletHitRadius={BULLET_VS_BULLET_HIT_RADIUS}
-        bulletAttractionRadius={BULLET_ATTRACTION_RADIUS}
-      />
+      {/* Full-height tiled background so it extends under the game area and mobile bar. */}
       <div
-        ref={stageWrapperRef}
-        style={{ width, height: stageHeight, overflow: 'hidden' }}
-      >
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0,
+          backgroundImage: `url(${backgroundPattern})`,
+          backgroundRepeat: "repeat",
+          backgroundSize: `${BACKGROUND_TILE_SIZE}px ${BACKGROUND_TILE_SIZE}px`,
+          backgroundColor: "rgb(3, 3, 15)",
+        }}
+      />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0, width: "100%" }}>
+        <HUD showDebugInfo={false} />
+        <CollisionInfo
+          isVisible={showCollisionDebug}
+          playerRadius={PLAYER_COLLISION_RADIUS}
+          enemyRadius={enemyBulletHitRadius}
+          bulletVsBulletHitRadius={BULLET_VS_BULLET_HIT_RADIUS}
+          bulletAttractionRadius={BULLET_ATTRACTION_RADIUS}
+        />
+        <div
+          ref={stageWrapperRef}
+          style={{ width, height: stageHeight, overflow: "hidden" }}
+        >
         <Stage
           width={width}
           height={stageHeight}
+          options={{ backgroundAlpha: 0 }}
           onPointerDown={handleStageClick}
         >
-          {/* Space-flight shader background (spaceGame) behind gameplay. */}
-          <SpaceGameBackground width={width} height={stageHeight} />
           <Container
             scale={scale}
             x={horizontalOffset}
@@ -958,21 +975,22 @@ const ExperienceContent = ({ onGameOver, onLevelComplete }: ExperienceContentPro
           </Container>
         </Stage>
       </div>
-      {/* Mobile-only movement and shoot controls in a separate bottom bar. */}
-      <div
-        style={{
-          marginTop: 'auto',
-          width: '100%',
-          height: mobileControlsHeight,
-        }}
-      >
-        <MobileControlsBar
-          onBigRedButtonPress={handleBigRedButton}
-          bigRedButtonEnabled={bigRedButtonEnabled}
-        />
+        {/* Mobile-only movement and shoot controls in a separate bottom bar. */}
+        <div
+          style={{
+            marginTop: "auto",
+            width: "100%",
+            height: mobileControlsHeight,
+          }}
+        >
+          <MobileControlsBar
+            onBigRedButtonPress={handleBigRedButton}
+            bigRedButtonEnabled={bigRedButtonEnabled}
+          />
+        </div>
       </div>
-      {/* Full-screen CRT overlay over gameplay AND mobile controls (non-interactive layer). */}
-      {retroScanlinesEnabled && (
+      {/* Full-screen CRT overlay (only when GPU supports shaders). */}
+      {shadersSupported && retroScanlinesEnabled && (
         <Stage
           width={width}
           height={height}

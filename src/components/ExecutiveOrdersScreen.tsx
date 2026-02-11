@@ -176,11 +176,11 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
   };
 
   // Vertical layout: spread options down the screen so text never overlaps.
-  // Slightly larger row spacing so each option block has more breathing room,
-  // especially on tall mobile.
-  const titleY = height * 0.16;
-  const firstRowY = height * 0.32;
-  const rowSpacing = height * 0.11;
+  // Bias the content slightly higher so the last option is fully visible,
+  // even on shorter screens.
+  const titleY = height * 0.13;
+  const firstRowY = height * 0.26;
+  const rowSpacing = height * 0.10;
 
   return (
     <div className="executive-orders-wrap">
@@ -196,68 +196,10 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
           <Text text="EXECUTIVE ORDERS" anchor={0.5} style={titleStyle} />
         </Container>
 
-        {/* King's Mode - GOD MODE (toggle) */}
-      <Container
-        x={width / 2}
-        y={firstRowY}
-        eventMode="static"
-        cursor="pointer"
-        pointerdown={handleKingsModeToggle}
-        pointerover={() => setHoverButton("kings")}
-        pointerout={() => setHoverButton(null)}
-      >
-        <Text
-          text="King's Mode"
-          anchor={0.5}
-          style={optionTitleStyle}
-          scale={{
-            x: hoverButton === "kings" ? 1.05 : 1,
-            y: hoverButton === "kings" ? 1.05 : 1,
-          }}
-        />
-        <Text text="(GOD MODE)" anchor={0.5} style={optionDescStyle} y={20} />
-        <Text
-          text={kingsMode ? "[ ON ]" : "[ OFF ]"}
-          anchor={0.5}
-          style={optionDescStyle}
-          y={38}
-          tint={kingsMode ? 0x00ff88 : 0x888888}
-        />
-      </Container>
-
-      {/* Big Red Button: red button on screen; when pressed, all enemies die in spreader-style wave */}
-      <Container
-        x={width / 2}
-        y={firstRowY + rowSpacing}
-        eventMode="static"
-        cursor="pointer"
-        pointerdown={handleBigRedButtonToggle}
-        pointerover={() => setHoverButton("bigred")}
-        pointerout={() => setHoverButton(null)}
-      >
-        <Text
-          text="Big Red Button"
-          anchor={0.5}
-          style={optionTitleStyle}
-          scale={{
-            x: hoverButton === "bigred" ? 1.05 : 1,
-            y: hoverButton === "bigred" ? 1.05 : 1,
-          }}
-        />
-        <Text text="Red button next to shoot; clears wave in a wave of explosions" anchor={0.5} style={optionDescStyle} y={20} />
-        <Text
-          text={bigRedButtonEnabled ? "[ ON ]" : "[ OFF ]"}
-          anchor={0.5}
-          style={optionDescStyle}
-          y={38}
-          tint={bigRedButtonEnabled ? 0xff4444 : 0x888888}
-        />
-      </Container>
-
       {/* Tax Reimbursement: enemy bullets deduct score instead of lives */}
       <Container
         x={width / 2}
-        y={firstRowY + rowSpacing * 2}
+        y={firstRowY}
         eventMode="static"
         cursor="pointer"
         pointerdown={handleTaxReimbursementToggle}
@@ -291,7 +233,7 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
       {/* Countdown Timer: level timer that causes GAME OVER when it hits 0 */}
       <Container
         x={width / 2}
-        y={firstRowY + rowSpacing * 3}
+        y={firstRowY + rowSpacing}
         eventMode="static"
         cursor="pointer"
         pointerdown={handleTimerToggle}
@@ -325,7 +267,7 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
       {/* HUD Stats: toggle visibility of specific HUD sections via popup */}
       <Container
         x={width / 2}
-        y={firstRowY + rowSpacing * 4}
+        y={firstRowY + rowSpacing * 2}
         eventMode="static"
         cursor="pointer"
         pointerdown={handleOpenHudStats}
@@ -359,7 +301,7 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
       {/* Extra Life: enable multi-life + score-based extra lives, or 1-hit game over */}
       <Container
         x={width / 2}
-        y={firstRowY + rowSpacing * 5}
+        y={firstRowY + rowSpacing * 3}
         eventMode="static"
         cursor="pointer"
         pointerdown={handleExtraLifeToggle}
@@ -391,7 +333,7 @@ const ExecutiveOrdersScreen = ({ onBack }: ExecutiveOrdersScreenProps) => {
       </Container>
 
       {/* Difficulty: enemy shooting aggression — I = easy, O = medium, U = hard */}
-      <Container x={width / 2} y={firstRowY + rowSpacing * 6}>
+      <Container x={width / 2} y={firstRowY + rowSpacing * 4}>
         <Text text="Difficulty" anchor={0.5} style={optionTitleStyle} />
         <Text text="Enemy shooting aggression" anchor={0.5} style={optionDescStyle} y={18} />
         <Container x={-52} y={38}>
